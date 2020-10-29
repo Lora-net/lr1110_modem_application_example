@@ -124,6 +124,13 @@ int32_t hal_rng_get_signed_random_in_range( const int32_t val_1, const int32_t v
 
 void HAL_RNG_MspInit( RNG_HandleTypeDef* hrng )
 {
+    RCC_PeriphCLKInitTypeDef PeriphClkInitStruct;
+
+    /*Select MSI output as RNG clock source */
+    PeriphClkInitStruct.PeriphClockSelection = RCC_PERIPHCLK_RNG;
+    PeriphClkInitStruct.RngClockSelection = RCC_RNGCLKSOURCE_MSI;
+    HAL_RCCEx_PeriphCLKConfig(&PeriphClkInitStruct);
+    
     // RNG Peripheral clock enable
     __RNG_CLK_ENABLE( );
 }

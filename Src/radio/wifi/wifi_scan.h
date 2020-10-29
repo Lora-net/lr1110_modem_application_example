@@ -103,7 +103,7 @@ typedef struct
  */
 typedef struct
 {
-    uint8_t                                nbrResults;
+    uint8_t                                nbr_results;
     wifi_scan_single_result_t              results[WIFI_MAX_RESULT_TOTAL];
     lr1110_modem_wifi_cumulative_timings_t timings;
     uint32_t                               global_consumption_uas;

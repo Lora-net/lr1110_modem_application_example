@@ -17,8 +17,8 @@
 EVK_TARGET = lr1110_modem_application_examples
 
 #Choose the app to compile
-TRACKER_APP = 1
-LORAMAC_APP = 0
+TRACKER_APP = 0
+LORAWAN_APP = 1
 GNSS_APP = 0
 WIFI_APP = 0
 TX_CONTINUOUS_APP = 0
@@ -122,9 +122,9 @@ C_SOURCES +=  \
 ${TOP_DIR}/Src/apps/Tracker/main_tracker.c
 endif
 
-ifeq ($(LORAMAC_APP),1)
+ifeq ($(LORAWAN_APP),1)
 C_SOURCES +=  \
-${TOP_DIR}/Src/apps/LoRaMac/classA/main_loramac_a.c
+${TOP_DIR}/Src/apps/LoRaWAN/main_lorawan.c
 endif
 
 ifeq ($(GNSS_APP),1)
@@ -234,7 +234,7 @@ C_INCLUDES =  \
 -I${TOP_DIR}/Src/radio/wifi \
 -I${TOP_DIR}/Src/radio/gnss \
 -I${TOP_DIR}/Src/radio/lr1110_modem/src \
--I${TOP_DIR}/Src/apps/LoRaMac/classA \
+-I${TOP_DIR}/Src/apps/LoRaWan \
 -I${TOP_DIR}/Src/apps/Tracker \
 -I${TOP_DIR}/Src/apps/update_firmware \
 

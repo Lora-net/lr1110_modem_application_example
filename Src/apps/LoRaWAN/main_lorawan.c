@@ -97,11 +97,6 @@
  */
 #define USE_PRODUCTION_KEYS 1
 
-/*!
- * \brief Use or not the Semtech join server
- */
-#define USE_SEMTECH_JOIN_SERVER 1
-
 /*
  * -----------------------------------------------------------------------------
  * --- PRIVATE TYPES -----------------------------------------------------------
@@ -355,9 +350,9 @@ int main( void )
     lr1110_modem_event_t                  lr1110_modem_event;
     uint32_t                              pin;
 
-    uint8_t dev_eui[8]  = LORAWAN_DEVICE_EUI;
-    uint8_t join_eui[8] = LORAWAN_JOIN_EUI;
-    uint8_t app_key[16] = LORAWAN_APP_KEY;
+    uint8_t dev_eui[LORAWAN_DEVICE_EUI_LEN] = LORAWAN_DEVICE_EUI;
+    uint8_t join_eui[LORAWAN_JOIN_EUI_LEN]  = LORAWAN_JOIN_EUI;
+    uint8_t app_key[LORAWAN_APP_KEY_LEN]    = LORAWAN_APP_KEY;
 
 
     /* Init board */
@@ -519,17 +514,15 @@ static lr1110_modem_response_code_t lorawan_init( void )
     modem_response_code |= lr1110_modem_set_class( &lr1110, LR1110_LORAWAN_CLASS_A );
 
 #if defined( USE_REGION_EU868 )
-    HAL_DBG_TRACE_MSG( "REGION      : EU868\r\n" );
+    HAL_DBG_TRACE_MSG( "REGION      : EU868\r\n\r\n" );
     modem_response_code |= lr1110_modem_set_region( &lr1110, LR1110_LORAWAN_REGION_EU868 );
 
     modem_response_code |= lr1110_modem_activate_duty_cycle( &lr1110, LORAWAN_DUTYCYCLE_ON);
 #endif
 #if defined( USE_REGION_US915 )
-    HAL_DBG_TRACE_MSG( "REGION      : US915\r\n" );
+    HAL_DBG_TRACE_MSG( "REGION      : US915\r\n\r\n" );
     modem_response_code |= lr1110_modem_set_region( &lr1110, LR1110_LORAWAN_REGION_US915 );
 #endif
-
-    modem_response_code |= lr1110_modem_set_adr_profile( &lr1110, LORAWAN_DEFAULT_DATARATE, adr_custom_list );
 
     /* Set DM info field */
     dm_info_fields.dm_info_field[0] = LR1110_MODEM_DM_INFO_TYPE_CHARGE;
@@ -718,6 +711,9 @@ static void lr1110_modem_reset_event( uint16_t reset_count )
 void lr1110_modem_network_joined( void )
 {
     HAL_DBG_TRACE_INFO( "###### ===== JOINED ==== ######\r\n\r\n" );
+    
+    /* Set the ADR profile once joined */
+    lr1110_modem_set_adr_profile( &lr1110, LORAWAN_DEFAULT_DATARATE, adr_custom_list );
 }
 
 void lr1110_modem_join_fail( void ) { HAL_DBG_TRACE_INFO( "###### ===== JOINED FAIL ==== ######\r\n\r\n" ); }
@@ -843,7 +839,7 @@ static void lr1110_modem_down_data( int8_t rssi, int8_t snr, lr1110_modem_down_d
 {
     HAL_DBG_TRACE_INFO( "\r\n###### ===== DOWNLINK FRAME %lu ==== ######\r\n\r\n", downlink_cnt++ );
 
-    HAL_DBG_TRACE_PRINTF( "RX WINDOW   : %d\r\n", (flags & 0x03) );
+    HAL_DBG_TRACE_PRINTF( "RX WINDOW   : %d\r\n", flags & ( LR1110_MODEM_DOWN_DATA_EVENT_DNW1 | LR1110_MODEM_DOWN_DATA_EVENT_DNW2 ) );
 
     HAL_DBG_TRACE_PRINTF( "RX PORT     : %d\r\n", port );
 

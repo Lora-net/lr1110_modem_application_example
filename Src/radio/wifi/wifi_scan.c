@@ -164,7 +164,7 @@ void lr1110_modem_wifi_scan_done( uint8_t* buffer, uint16_t size )
 void wifi_init( const void* context, wifi_settings_t wifi_settings )
 {
     wifi.state                          = WIFI_INIT;
-    wifi.results.nbrResults             = 0;
+    wifi.results.nbr_results            = 0;
     wifi.results.global_consumption_uas = 0;
 
     timer_init( &wifi_scan_timeout_timer, on_wifi_scan_timeout_event );
@@ -273,10 +273,10 @@ wifi_scan_result_t wifi_execute_scan( const void* context )
 
 void lr1110_display_wifi_scan_results( void )
 {
-    if( wifi.results.nbrResults != 0 )
+    if( wifi.results.nbr_results != 0 )
     {
-        HAL_DBG_TRACE_PRINTF( "nb MAC scanned : %d \r\n", wifi.results.nbrResults );
-        for( uint8_t i = 0; i < wifi.results.nbrResults; i++ )
+        HAL_DBG_TRACE_PRINTF( "nb MAC scanned : %d \r\n", wifi.results.nbr_results );
+        for( uint8_t i = 0; i < wifi.results.nbr_results; i++ )
         {
             HAL_DBG_TRACE_MSG( "MAC addr : " );
             for( uint8_t j = 0; j < 6; j++ )
@@ -362,7 +362,7 @@ void wifi_add_basic_mac_to_results( lr1110_modem_system_reg_mode_t reg_mode, wif
 
     results->timings = timing;
     results->global_consumption_uas += wifi_compute_consumption( reg_mode, timing );
-    results->nbrResults = nbr_results;
+    results->nbr_results = nbr_results;
 }
 
 void wifi_add_complete_mac_to_results( lr1110_modem_system_reg_mode_t reg_mode, wifi_scan_all_result_t* results,
@@ -384,7 +384,7 @@ void wifi_add_complete_mac_to_results( lr1110_modem_system_reg_mode_t reg_mode, 
 
     results->timings = timing;
     results->global_consumption_uas += wifi_compute_consumption( reg_mode, timing );
-    results->nbrResults = nbr_results;
+    results->nbr_results = nbr_results;
 }
 
 /* --- EOF ------------------------------------------------------------------ */

@@ -65,9 +65,9 @@ extern "C" {
 
 /*!
  * \brief Defines the application keep alive frame interval
- * when device doesn't move. 1800s (30min), value in [ms].
+ * when device doesn't move. 3600s, value in [ms].
  */
-#define TRACKER_KEEP_ALIVE_FRAME_INTERVAL 1800000
+#define TRACKER_KEEP_ALIVE_FRAME_INTERVAL 3600000
 
 /*!
  * \brief Defines the application data transmission duty cycle counter.
@@ -81,11 +81,6 @@ extern "C" {
 #define USE_PRODUCTION_KEYS 1
 
 /*!
- * \brief Use or not the Semtech join server.
- */
-#define USE_SEMTECH_JOIN_SERVER 1
-
-/*!
  * Defines the application firmware version
  */
  
@@ -93,7 +88,7 @@ extern "C" {
  * \brief Defines the application firmware version
  */
 #define TRACKER_MAJOR_APP_VERSION 1
-#define TRACKER_MINOR_APP_VERSION 1
+#define TRACKER_MINOR_APP_VERSION 2
 #define TRACKER_SUB_MINOR_APP_VERSION 0
 
 
@@ -113,7 +108,7 @@ extern "C" {
 /*!
  * \brief LoRaWAN port used to the gnss push solver messages
  */
-#define GNSS_PUSH_SOLVER_MSG_PORT 197
+#define GNSS_PUSH_SOLVER_MSG_PORT 150
 
 /*
  * -----------------------------------------------------------------------------

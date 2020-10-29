@@ -34,6 +34,7 @@
  * --- DEPENDENCIES ------------------------------------------------------------
  */
 #include <stdio.h>
+#include <time.h>
 #include "main_tracker.h"
 #include "lr1110-modem-board.h"
 #include "Commissioning_tracker.h"
@@ -58,9 +59,14 @@
 #define APP_TX_DUTYCYCLE_RND 1000
 
 /*!
- * \brief Default datarate
+ * \brief Default datarate when device is static
  */
-#define LORAWAN_DEFAULT_DATARATE LR1110_MODEM_ADR_PROFILE_NETWORK_SERVER_CONTROLLED
+#define LORAWAN_STATIC_DATARATE LR1110_MODEM_ADR_PROFILE_NETWORK_SERVER_CONTROLLED
+
+/*!
+ * \brief Default datarate when device is mobile
+ */
+#define LORAWAN_MOBILE_DATARATE LR1110_MODEM_ADR_PROFILE_MOBILE_LOW_POWER
 
 /*!
  * \brief LoRaWAN ETSI duty cycle control enable/disable
@@ -357,7 +363,7 @@ int main( void )
     /* Init board */
     hal_mcu_init( );
     hal_mcu_init_periph( );
-    
+
     /* Board is initialized */
     leds_blink( LED_ALL_MASK, 100, 2, true );
     
@@ -492,19 +498,19 @@ int main( void )
                     if(tracker_ctx.send_alive_frame == true) // means device is static
                     {
                         lr1110_modem_get_adr_profile ( &lr1110, &adr_profile );
-                        if(adr_profile != LR1110_MODEM_ADR_PROFILE_NETWORK_SERVER_CONTROLLED)
+                        if(adr_profile != LORAWAN_STATIC_DATARATE)
                         {
-                            HAL_DBG_TRACE_MSG( "Set ADR to LR1110_MODEM_ADR_PROFILE_NETWORK_SERVER_CONTROLLED\n\r\n\r" );
-                            lr1110_modem_set_adr_profile( &lr1110, LR1110_MODEM_ADR_PROFILE_NETWORK_SERVER_CONTROLLED, adr_custom_list );
+                            HAL_DBG_TRACE_MSG( "Set ADR to LORAWAN_STATIC_DATARATE\n\r\n\r" );
+                            lr1110_modem_set_adr_profile( &lr1110, LORAWAN_STATIC_DATARATE, adr_custom_list );
                         }
                     }
                     else // means device is mobile
                     {
                         lr1110_modem_get_adr_profile ( &lr1110, &adr_profile );
-                        if(adr_profile != LR1110_MODEM_ADR_PROFILE_MOBILE_LOW_POWER)
+                        if(adr_profile != LORAWAN_MOBILE_DATARATE)
                         {
-                            HAL_DBG_TRACE_MSG( "Set ADR to LR1110_MODEM_ADR_PROFILE_MOBILE_LOW_POWER\n\r\n\r" );
-                            lr1110_modem_set_adr_profile( &lr1110, LR1110_MODEM_ADR_PROFILE_MOBILE_LOW_POWER, adr_custom_list );
+                            HAL_DBG_TRACE_MSG( "Set ADR to LORAWAN_MOBILE_DATARATE\n\r\n\r" );
+                            lr1110_modem_set_adr_profile( &lr1110, LORAWAN_MOBILE_DATARATE, adr_custom_list );
                         }
                     }
 
@@ -532,8 +538,14 @@ int main( void )
 
                         if( tracker_ctx.has_date == true )
                         {
+                            struct tm epoch_time;
+                            
                             /* Timestamp scan */
                             tracker_ctx.timestamp = lr1110_modem_board_get_systime_from_gps( &lr1110 );
+
+                            memcpy( &epoch_time, localtime( &tracker_ctx.timestamp ), sizeof( struct tm ) );
+                            HAL_DBG_TRACE_PRINTF( "Date : %d-%d-%d %d:%d:%d.000 \r\n", epoch_time.tm_year + 1900, epoch_time.tm_mon + 1,
+                            epoch_time.tm_mday, epoch_time.tm_hour, epoch_time.tm_min, epoch_time.tm_sec );
 
                             tracker_run_gnss_scan(
                                             tracker_ctx.gnss_settings, tracker_ctx.nav_message,
@@ -562,11 +574,11 @@ int main( void )
 
                     /* Temperature */
                     tracker_ctx.tout = acc_get_temperature( );
-                    HAL_DBG_TRACE_PRINTF( "Temperature : %d\r\n", tracker_ctx.tout/100 );
+                    HAL_DBG_TRACE_PRINTF( "Temperature : %d *C\r\n", tracker_ctx.tout/100 );
 #endif
                     /* Modem charge */
                     lr1110_modem_get_charge( &lr1110, &tracker_ctx.charge );
-                    HAL_DBG_TRACE_PRINTF( "Charge value : %d\r\n", tracker_ctx.charge );
+                    HAL_DBG_TRACE_PRINTF( "Charge value : %d mAh\r\n", tracker_ctx.charge );
 
                     /* Build the payload and stream it */
                     build_and_stream_payload( );
@@ -585,11 +597,11 @@ int main( void )
                         }
                         else
                         {
-                                HAL_DBG_TRACE_PRINTF(
-                                    "Device is static next keep alive frame in %d sec\r\n",
-                                    ( ( tracker_ctx.app_keep_alive_frame_interval / tracker_ctx.app_scan_interval ) -
-                                      tracker_ctx.next_frame_ctn ) *
-                                        ( tracker_ctx.app_scan_interval / 1000 ) );
+                            HAL_DBG_TRACE_PRINTF(
+                                "Device is static next keep alive frame in %d sec\r\n",
+                                ( ( tracker_ctx.app_keep_alive_frame_interval / tracker_ctx.app_scan_interval ) -
+                                  tracker_ctx.next_frame_ctn ) *
+                                    ( tracker_ctx.app_scan_interval / 1000 ) );
                             tracker_ctx.next_frame_ctn++;
                         }
                         device_state = DEVICE_STATE_CYCLE;
@@ -599,6 +611,7 @@ int main( void )
                         device_state = DEVICE_STATE_SEND;
                     }
                 }
+                
                 break;
             }
             case DEVICE_STATE_SEND:
@@ -607,10 +620,10 @@ int main( void )
                 {
                     lr1110_modem_stream_status_t stream_status;
 
-                        /* Stream previous payload if it's not terminated */
-                        lr1110_modem_stream_status( &lr1110, LORAWAN_STREAM_APP_PORT, &stream_status );
-                        HAL_DBG_TRACE_PRINTF( "Streaming ongoing %d bytes remaining %d bytes free \r\n",
-                                              stream_status.pending, stream_status.free );
+                    /* Stream previous payload if it's not terminated */
+                    lr1110_modem_stream_status( &lr1110, LORAWAN_STREAM_APP_PORT, &stream_status );
+                    HAL_DBG_TRACE_PRINTF( "Streaming ongoing %d bytes remaining %d bytes free \r\n",
+                                          stream_status.pending, stream_status.free );
                 }
 
                 device_state = DEVICE_STATE_CYCLE;
@@ -621,7 +634,7 @@ int main( void )
             {
                 /* Reload the software watchdog */
                 hal_mcu_reset_software_watchdog( );
-            
+
                 device_state = DEVICE_STATE_SLEEP;
 
                 /* Schedule next packet transmission */
@@ -667,10 +680,10 @@ void _Error_Handler( int line )
 {
     /* USER CODE BEGIN Error_Handler_Debug */
     /* User can add his own implementation to report the HAL error return state */
-    while( 1 )
-    {
-        HAL_DBG_TRACE_ERROR( "%s\n", __FUNCTION__ );
-    }
+    HAL_DBG_TRACE_ERROR( "Error Handler : %s\n", __FUNCTION__ );
+
+    // reset the board
+    hal_mcu_reset( );
     /* USER CODE END Error_Handler_Debug */
 }
 
@@ -692,7 +705,7 @@ static void tracker_run_wifi_scan( wifi_settings_t wifi_settings, wifi_scan_all_
     else
     {
         HAL_DBG_TRACE_MSG( "Wi-Fi Scan error\n\r" );
-        wifi_result->nbrResults = 0;  // reset MAC addr detected
+        wifi_result->nbr_results = 0;  // reset MAC addr detected
     }
 }
 
@@ -736,52 +749,49 @@ static void build_and_stream_payload( void )
         
         tracker_ctx.lorawan_payload[tracker_ctx.lorawan_payload_len++] = TAG_NAV; // GNSS PATCH TAG
         tracker_ctx.lorawan_payload[tracker_ctx.lorawan_payload_len++] = tracker_ctx.nav_message_len; // GNSS LEN
-        memcpy1(tracker_ctx.lorawan_payload + tracker_ctx.lorawan_payload_len,tracker_ctx.nav_message,tracker_ctx.nav_message_len);
+        memcpy(tracker_ctx.lorawan_payload + tracker_ctx.lorawan_payload_len,tracker_ctx.nav_message,tracker_ctx.nav_message_len);
         tracker_ctx.lorawan_payload_len += tracker_ctx.nav_message_len;
 
         /* Push the NAV message in the FiFo stream */
         add_payload_in_streaming_fifo( tracker_ctx.lorawan_payload, tracker_ctx.lorawan_payload_len );
 
-        tracker_ctx.lorawan_payload_len = 0;  // reset the payload len
+        tracker_ctx.lorawan_payload_len        = 0;  // reset the payload len
+        tracker_ctx.nb_detected_satellites = 0;  // Reset the nb_detected_satellites result
     }
 
-    if( tracker_ctx.wifi_result.nbrResults > 0 )
+    if( tracker_ctx.wifi_result.nbr_results > 0 )
     {
         /* Add Wi-Fi scan */
         uint8_t wifi_index = 0;
         HAL_DBG_TRACE_MSG( " - WiFi scan : " );
         tracker_ctx.lorawan_payload[tracker_ctx.lorawan_payload_len++] = TAG_WIFI_SCAN;  // Wi-Fi TAG
         tracker_ctx.lorawan_payload[tracker_ctx.lorawan_payload_len++] =
-            tracker_ctx.wifi_result.nbrResults * WIFI_SINGLE_BEACON_LEN;  // Wi-Fi Len
+            tracker_ctx.wifi_result.nbr_results * WIFI_SINGLE_BEACON_LEN;  // Wi-Fi Len
 
         wifi_index = tracker_ctx.lorawan_payload_len;
-        for( uint8_t i = 0; i < tracker_ctx.wifi_result.nbrResults; i++ )
+        for( uint8_t i = 0; i < tracker_ctx.wifi_result.nbr_results; i++ )
         {
-            tracker_ctx.lorawan_payload[wifi_index] =
-                tracker_ctx.wifi_result.results[i].rssi;
-            memcpy( &tracker_ctx.lorawan_payload[wifi_index + 1],
-                     tracker_ctx.wifi_result.results[i].mac_address, 6 );
+            tracker_ctx.lorawan_payload[wifi_index] = tracker_ctx.wifi_result.results[i].rssi;
+            memcpy( &tracker_ctx.lorawan_payload[wifi_index + 1], tracker_ctx.wifi_result.results[i].mac_address, 6 );
             wifi_index += WIFI_SINGLE_BEACON_LEN;
         }
-        tracker_ctx.lorawan_payload_len +=
-            tracker_ctx.wifi_result.nbrResults * WIFI_SINGLE_BEACON_LEN;
+        tracker_ctx.lorawan_payload_len += tracker_ctx.wifi_result.nbr_results * WIFI_SINGLE_BEACON_LEN;
 
         /* Push the Wi-Fi data in the FiFo stream */
         add_payload_in_streaming_fifo( tracker_ctx.lorawan_payload, tracker_ctx.lorawan_payload_len );
 
-        tracker_ctx.lorawan_payload_len = 0;  // reset the payload len
+        tracker_ctx.lorawan_payload_len = 0;        // reset the payload len
+        tracker_ctx.wifi_result.nbr_results = 0;    // reset the nbr_results mac addresses
     }
 
 #if(ACCELEROMETER_MOUNTED == 1)
     /* Send sensors value */
     HAL_DBG_TRACE_MSG( " - sensors value : " );
-    tracker_ctx.lorawan_payload[tracker_ctx.lorawan_payload_len++] =
-        TAG_ACCELEROMETER;                                               // Accelerometer TAG
-    tracker_ctx.lorawan_payload[tracker_ctx.lorawan_payload_len++] = 9;  // Accelerometer LEN
+    tracker_ctx.lorawan_payload[tracker_ctx.lorawan_payload_len++] = TAG_ACCELEROMETER;  // Accelerometer TAG
+    tracker_ctx.lorawan_payload[tracker_ctx.lorawan_payload_len++] = 9;                  // Accelerometer LEN
 
     /* Accelemrometer movement history  */
-    tracker_ctx.lorawan_payload[tracker_ctx.lorawan_payload_len++] =
-        tracker_ctx.accelerometer_move_history;
+    tracker_ctx.lorawan_payload[tracker_ctx.lorawan_payload_len++] = tracker_ctx.accelerometer_move_history;
 
     /* Acceleromter data */
     tracker_ctx.lorawan_payload[tracker_ctx.lorawan_payload_len++] = tracker_ctx.accelerometer_x >> 8;
@@ -808,6 +818,7 @@ static void build_and_stream_payload( void )
 
     tracker_ctx.lorawan_payload_len = 0;  // reset the payload len
 }
+
 static lr1110_modem_response_code_t lorawan_init( void )
 {
     lr1110_modem_dm_info_fields_t dm_info_fields;
@@ -825,8 +836,6 @@ static lr1110_modem_response_code_t lorawan_init( void )
         HAL_DBG_TRACE_MSG( "REGION      : US915\r\n\r\n" );
         modem_response_code |= lr1110_modem_set_region( &lr1110, LR1110_LORAWAN_REGION_US915 );
 #endif
-
-    modem_response_code |= lr1110_modem_set_adr_profile( &lr1110, LORAWAN_DEFAULT_DATARATE, adr_custom_list );
 
     /* Set DM info field */
     dm_info_fields.dm_info_field[0] = LR1110_MODEM_DM_INFO_TYPE_CHARGE;
@@ -847,14 +856,15 @@ static lr1110_modem_response_code_t lorawan_init( void )
 
 static lr1110_modem_response_code_t gnss_init( void )
 {
-    lr1110_modem_response_code_t  modem_response_code = LR1110_MODEM_RESPONSE_CODE_OK;
-    
-    modem_response_code = lr1110_modem_gnss_set_assistance_position( &lr1110, &tracker_ctx.gnss_settings.assistance_position );
-    
+    lr1110_modem_response_code_t modem_response_code = LR1110_MODEM_RESPONSE_CODE_OK;
+
+    modem_response_code =
+        lr1110_modem_gnss_set_assistance_position( &lr1110, &tracker_ctx.gnss_settings.assistance_position );
+
     return modem_response_code;
 }
 
-static void print_hex_buffer(const uint8_t* buffer, uint8_t size )
+static void print_hex_buffer( const uint8_t* buffer, uint8_t size )
 {
     uint8_t newline = 0;
 
@@ -1006,6 +1016,9 @@ static void lr1110_modem_reset_event( uint16_t reset_count )
 static void lr1110_modem_network_joined( void )
 {
     HAL_DBG_TRACE_INFO( "###### ===== JOINED ==== ######\r\n\r\n" );
+    
+    /* Set the ADR profile once joined */
+    lr1110_modem_set_adr_profile( &lr1110, LORAWAN_MOBILE_DATARATE, adr_custom_list );
 }
 
 static void lr1110_modem_join_fail( void ) { HAL_DBG_TRACE_INFO( "###### ===== JOIN FAIL ==== ######\r\n\r\n" ); }
@@ -1097,7 +1110,7 @@ static void lr1110_modem_down_data( int8_t rssi, int8_t snr, lr1110_modem_down_d
 {
     HAL_DBG_TRACE_INFO( "\r\n###### ===== DOWNLINK FRAME %lu ==== ######\r\n\r\n", downlink_cnt++ );
 
-    HAL_DBG_TRACE_PRINTF( "RX WINDOW   : %d\r\n", flags );
+    HAL_DBG_TRACE_PRINTF( "RX WINDOW   : %d\r\n", flags & ( LR1110_MODEM_DOWN_DATA_EVENT_DNW1 | LR1110_MODEM_DOWN_DATA_EVENT_DNW2 ) );
 
     HAL_DBG_TRACE_PRINTF( "RX PORT     : %d\r\n", port );
 

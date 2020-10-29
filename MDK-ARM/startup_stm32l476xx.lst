@@ -681,8 +681,8 @@ ARM Macro Assembler    Page 11
               00000000 
 Command Line: --debug --xref --diag_suppress=9931 --cpu=Cortex-M4.fp.sp --apcs=
 interwork --depend=lr1110_modem_application_examples\startup_stm32l476xx.d -olr
-1110_modem_application_examples\startup_stm32l476xx.o -I.\RTE\_lr1110_modem_tra
-cker_EU868 -IC:\Users\bboulet\AppData\Local\Arm\Packs\ARM\CMSIS\5.7.0\CMSIS\Cor
+1110_modem_application_examples\startup_stm32l476xx.o -I.\RTE\_lr1110_modem_LoR
+aWAN_US915 -IC:\Users\bboulet\AppData\Local\Arm\Packs\ARM\CMSIS\5.7.0\CMSIS\Cor
 e\Include -IC:\Users\bboulet\AppData\Local\Arm\Packs\Keil\STM32L4xx_DFP\2.2.0\D
 rivers\CMSIS\Device\ST\STM32L4xx\Include --predefine="__MICROLIB SETA 1" --pred
 efine="__UVISION_VERSION SETA 529" --predefine="_RTE_ SETA 1" --predefine="STM3

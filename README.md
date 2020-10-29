@@ -5,7 +5,7 @@
 The LR1110 modem demo application project contains several simple examples highlighting lr1110 modem features :
 
 Simple LoRaWAN Class A application 868/915 MHz:
--	The app joins automatically the network then sends uplinks periodically
+-	The app joins automatically the LoRa Network server then sends uplinks periodically with the interval defined by APP_TX_DUTYCYCLE
 Simple GNSS example :
 -	The unix date in ASCII is asked to the user through a terminal, once the date is received by the modem, it executes a GNSS scan periodically according to the gnss settings defined in the application
 Simple Wi-Fi example :
@@ -20,6 +20,7 @@ Tracker example :
 
 ## 2. Usage
 	
+-	Uart baudrate is set to 921600 bauds
 -	To use the Semtech Join Server keys derivation algorythm : update the USE_SEMTECH_JOIN_SERVER definition
 -	To use the LR1110 modem production keys : update the USE_PRODUCTION_KEYS definition
 
@@ -31,6 +32,13 @@ To build the host softwares, proceed as follow:
 -	execute the makefile (in gcc folder)
 
 ## 4. Changelog
+
+### V 1.2.0 ###
+
+-	Update the LR1110 modem drivers
+-	Work on LR1110 modem 1.0.7 firmware version
+-	Fix RNG module
+-	Code format
 
 ### V 1.1.0 ###
 

@@ -65,12 +65,12 @@ typedef struct
 {
     /* Time variables */
     uint32_t timestamp;
-    bool has_date; /* Indicates if a date has been set */
+    bool     has_date; /* Indicates if a date has been set */
 
     /* LoRaWAN Parameters */
-    uint8_t dev_eui[8];
-    uint8_t join_eui[8];
-    uint8_t app_key[16];
+    uint8_t  dev_eui[8];
+    uint8_t  join_eui[8];
+    uint8_t  app_key[16];
     uint8_t  chip_eui[8];
     uint32_t lorawan_pin;
 
@@ -87,23 +87,23 @@ typedef struct
     bool     accelerometer_used;
     uint32_t app_scan_interval;
     uint32_t app_keep_alive_frame_interval;
-    uint8_t accelerometer_move_history;	
-    bool send_alive_frame;
-    bool stream_done;
+    uint8_t  accelerometer_move_history;
+    bool     send_alive_frame;
+    bool     stream_done;
 
     /* Results values */
-    uint16_t lorawan_payload_len;
-    uint8_t lorawan_payload[500];
-    uint32_t next_frame_ctn;
+    uint16_t               lorawan_payload_len;
+    uint8_t                lorawan_payload[500];
+    uint32_t               next_frame_ctn;
     uint16_t nav_message_len;
     uint8_t nav_message[259];
     uint8_t nb_detected_satellites;
     wifi_scan_all_result_t wifi_result;
-    int16_t accelerometer_x;
-    int16_t accelerometer_y;
-    int16_t accelerometer_z;
-    int16_t tout;
-    uint32_t charge;
+    int16_t                accelerometer_x;
+    int16_t                accelerometer_y;
+    int16_t                accelerometer_z;
+    int16_t                tout;
+    uint32_t               charge;
 }tracker_ctx_t;
 
 /*

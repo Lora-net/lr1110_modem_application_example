@@ -90,6 +90,7 @@ extern "C" {
     {                                          \
         IEEE_OUI, 0x00, 0x00, 0x00, 0x00, 0x00 \
     }
+#define LORAWAN_DEVICE_EUI_LEN 8
 
 /*!
  * App/Join server IEEE EUI (big endian)
@@ -98,6 +99,7 @@ extern "C" {
     {                                                  \
         0x00, 0x16, 0xC0, 0x01, 0xFF, 0xFE, 0x00, 0x01 \
     }
+#define LORAWAN_JOIN_EUI_LEN 8
 
 /*!
  * Application root key
@@ -107,6 +109,12 @@ extern "C" {
     {                                                                                                  \
         0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 \
     }
+#define LORAWAN_APP_KEY_LEN 16
+
+/*!
+ * \brief Use or not the Semtech join server
+ */
+#define USE_SEMTECH_JOIN_SERVER 1
 
 /*
  * -----------------------------------------------------------------------------
