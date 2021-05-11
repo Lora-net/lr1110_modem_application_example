@@ -133,15 +133,6 @@ typedef struct{
 typedef int32_t (*lis2de12_write_ptr)(void *, uint8_t, uint8_t*, uint16_t);
 typedef int32_t (*lis2de12_read_ptr) (void *, uint8_t, uint8_t*, uint16_t);
 
-//typedef struct {
-//  /** Component mandatory fields **/
-//  lis2de12_write_ptr  write_reg;
-//  lis2de12_read_ptr   read_reg;
-//  /** Customizable optional pointer **/
-//  void *handle;
-//} lis2de12_ctx_t;
-
-
 /**
   * @}
   *

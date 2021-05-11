@@ -1,7 +1,7 @@
 /*!
- * \file      board-config.h
+ * @file      board-config.h
  *
- * \brief     board specific pinout
+ * @brief     board specific pinout
  *
  * Revised BSD License
  * Copyright Semtech Corporation 2020. All rights reserved.
@@ -52,52 +52,51 @@ extern "C" {
  */
 
 /*!
- * \brief Defines the time required for the TCXO to wakeup [ms].
+ * @brief Defines the time required for the TCXO to wakeup [ms].
  */
 #if defined( LR1110EVK )
-#define BOARD_TCXO_WAKEUP_TIME                      5
+#define BOARD_TCXO_WAKEUP_TIME 5
 #else
-#define BOARD_TCXO_WAKEUP_TIME                      0
+#define BOARD_TCXO_WAKEUP_TIME 0
 #endif
 
 /*!
- * Board MCU pins definitions
+ * @brief Board MCU pins definitions
  */
 
-//Radio specific pinout and peripherals
-#define RADIO_SPI_MOSI          PA_7
-#define RADIO_SPI_MISO          PA_6
-#define RADIO_SPI_SCLK          PA_5
-#define RADIO_NSS               PA_8
-#define RADIO_NRST              PA_0
-#define RADIO_EVENT             PB_4
-#define RADIO_BUSY_PIN          PB_3
-#define RADIO_RESET             PA_0    
+/* LR1110 */
+#define RADIO_RESET PA_0
+#define RADIO_MOSI PA_7
+#define RADIO_MISO PA_6
+#define RADIO_SCLK PA_5
+#define RADIO_NSS PA_8
+#define RADIO_BUSY PB_3
+#define RADIO_EVENT PB_4
 
+#define LNA_PON PB_0
 
-#define LNA_PON                 PB_0
-#define RADIO_FREQ_SEL          PA_1
-#define RADIO_DEVICE_SEL        PA_4
+/* Sensors */
+#define I2C_SCL PB_8
+#define I2C_SDA PB_9
 
-#define LED_TX                  PC_1
-#define LED_RX                  PC_0
+#define ACC_INT1 PA_9
 
-#define ACC_INT1                PA_9
+/* LED */
+#define LED_RX PC_0
+#define LED_TX PC_1
+#define LED_SCAN PB_5
 
-#define OSC_LSE_IN_PIN          PC_14
-#define OSC_LSE_OUT_PIN         PC_15
+#define OSC_LSE_IN PC_14
+#define OSC_LSE_OUT PC_15
 
-#define OSC_HSE_IN_PIN          PH_0
-#define OSC_HSE_OUT             PH_1
+#define OSC_HSE_IN PH_0
+#define OSC_HSE_OUT PH_1
 
-#define SWCLK_PIN               PA_14
-#define SWDAT_PIN               PA_13
+#define SWCLK PA_14
+#define SWDAT PA_13
 
-#define I2C_SCL                 PB_8
-#define I2C_SDA                 PB_9
-
-#define UART_TX                 PA_2
-#define UART_RX                 PA_3
+#define UART_TX PA_2
+#define UART_RX PA_3
 
 /*
  * -----------------------------------------------------------------------------

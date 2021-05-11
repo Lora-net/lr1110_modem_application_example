@@ -22,12 +22,22 @@ LORAWAN_APP = 1
 GNSS_APP = 0
 WIFI_APP = 0
 TX_CONTINUOUS_APP = 0
-UPDATE_MODEM_APP = 0
+
+#Choose the LoRaWAN Class to use
+USE_LORAWAN_CLASS_A = 1
+USE_LORAWAN_CLASS_C = 0
 
 #Choose the region to use
 USE_REGION_868 = 1
+USE_REGION_RU864 = 0
+USE_REGION_IN865 = 0
 USE_REGION_915 = 0
-
+USE_REGION_AU915 = 0
+USE_REGION_KR920 = 0
+USE_REGION_AS923_GRP1 = 0
+USE_REGION_AS923_GRP2 = 0
+USE_REGION_AS923_GRP3 = 0
+USE_REGION_CN470 = 0
 
 TOP_DIR = ..
 
@@ -75,7 +85,7 @@ ${TOP_DIR}/Src/smtc_hal/smtc_hal_tmr.c \
 ${TOP_DIR}/Src/smtc_hal/smtc_hal_tmr_list.c \
 ${TOP_DIR}/Src/smtc_hal/smtc_hal_uart.c \
 ${TOP_DIR}/Src/smtc_hal/smtc_hal_watchdog.c \
-${TOP_DIR}/Src/boards/lr1110-modem-board.c \
+${TOP_DIR}/Src/boards/lr1110_modem_board.c \
 ${TOP_DIR}/Src/boards/utilities.c \
 ${TOP_DIR}/Src/radio/lr1110.c \
 ${TOP_DIR}/Src/radio/lr1110_modem_hal.c \
@@ -85,8 +95,10 @@ ${TOP_DIR}/Src/radio/lr1110_modem/src/lr1110_modem_gnss.c \
 ${TOP_DIR}/Src/radio/lr1110_modem/src/lr1110_modem_lorawan.c \
 ${TOP_DIR}/Src/radio/lr1110_modem/src/lr1110_modem_system.c \
 ${TOP_DIR}/Src/radio/lr1110_modem/src/lr1110_modem_wifi.c \
+${TOP_DIR}/Src/radio/lr1110_modem/src/lr1110_modem_helper.c \
 ${TOP_DIR}/Src/radio/wifi/wifi_scan.c \
 ${TOP_DIR}/Src/radio/gnss/gnss_scan.c \
+${TOP_DIR}/Src/radio/lorawan_config/lorawan_config.c \
 ${TOP_DIR}/Drivers/BSP/Components/external_supply/external_supply.c \
 ${TOP_DIR}/Drivers/BSP/Components/Leds/leds.c \
 ${TOP_DIR}/Drivers/BSP/Components/lis2de12/lis2de12.c \
@@ -142,11 +154,6 @@ C_SOURCES +=  \
 ${TOP_DIR}/Src/apps/tx_continuous_test/main_test_tx_continuous.c
 endif
 
-ifeq ($(UPDATE_MODEM_APP),1)
-C_SOURCES +=  \
-${TOP_DIR}/Src/apps/update-firmware/update_firmware.c
-endif
-
 # ASM sources
 ASM_SOURCES =  \
 ${TOP_DIR}/Drivers/CMSIS/Device/ST/STM32L4xx/Source/Templates/gcc/startup_stm32l476xx.s
@@ -198,11 +205,30 @@ C_DEFS =  \
 -DSTM32L476xx \
 -DUSE_HAL_DRIVER \
 -DLR1110EVK \
--DMODEM_TO_MODEM \
+
+ifeq ($(USE_LORAWAN_CLASS_A),1)
+C_DEFS +=  \
+-DUSE_LORAWAN_CLASS_A
+endif
+
+ifeq ($(USE_LORAWAN_CLASS_C),1)
+C_DEFS +=  \
+-DUSE_LORAWAN_CLASS_C
+endif
 
 ifeq ($(USE_REGION_868),1)
 C_DEFS +=  \
 -DUSE_REGION_EU868
+endif
+
+ifeq ($(USE_REGION_RU864),1)
+C_DEFS +=  \
+-DUSE_REGION_RU864
+endif
+
+ifeq ($(USE_REGION_IN865),1)
+C_DEFS +=  \
+-DUSE_REGION_IN865
 endif
 
 ifeq ($(USE_REGION_915),1)
@@ -210,6 +236,35 @@ C_DEFS +=  \
 -DUSE_REGION_US915
 endif
 
+ifeq ($(USE_REGION_AU915),1)
+C_DEFS +=  \
+-DUSE_REGION_AU915
+endif
+
+ifeq ($(USE_REGION_KR920),1)
+C_DEFS +=  \
+-DUSE_REGION_KR920
+endif
+
+ifeq ($(USE_REGION_AS923_GRP1),1)
+C_DEFS +=  \
+-DUSE_REGION_AS923_GRP1
+endif
+
+ifeq ($(USE_REGION_AS923_GRP2),1)
+C_DEFS +=  \
+-DUSE_REGION_AS923_GRP2
+endif
+
+ifeq ($(USE_REGION_AS923_GRP3),1)
+C_DEFS +=  \
+-DUSE_REGION_AS923_GRP3
+endif
+
+ifeq ($(USE_REGION_CN470),1)
+C_DEFS +=  \
+-DUSE_REGION_CN470
+endif
 
 -DGIT_VERSION=\"$(GIT_VERSION)\" \
 -DGIT_COMMIT=\"$(GIT_COMMIT)\" \
@@ -231,6 +286,7 @@ C_INCLUDES =  \
 -I${TOP_DIR}/Inc/smtc_hal \
 -I${TOP_DIR}/Inc/boards \
 -I${TOP_DIR}/Src/radio \
+-I${TOP_DIR}/Src/radio/lorawan_config \
 -I${TOP_DIR}/Src/radio/wifi \
 -I${TOP_DIR}/Src/radio/gnss \
 -I${TOP_DIR}/Src/radio/lr1110_modem/src \

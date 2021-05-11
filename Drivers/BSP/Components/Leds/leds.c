@@ -1,7 +1,7 @@
 /*!
- * \file      leds.c
+ * @file      leds.c
  *
- * \brief     leds driver implementation.
+ * @brief     Leds driver implementation.
  *
  * Revised BSD License
  * Copyright Semtech Corporation 2020. All rights reserved.
@@ -70,24 +70,31 @@
 void leds_init( void ){
     hal_gpio_init_out( LED_TX, 0 );
     hal_gpio_init_out( LED_RX, 0 );
+    hal_gpio_init_out( LED_SCAN, 0 );
 }
 
 void leds_deinit( void ){
     hal_gpio_deinit( LED_TX );
     hal_gpio_deinit( LED_RX );
+    hal_gpio_deinit( LED_SCAN );
 }
 
 void leds_on( uint8_t leds ){
 
     if( leds & LED_TX_MASK )
     {
-        // LED1
+        /* LED TX */
         hal_gpio_set_value(LED_TX, GPIO_PIN_SET );
     }
     if( leds & LED_RX_MASK )
     {
-        // LED2
+        /* LED RX */
         hal_gpio_set_value(LED_RX, GPIO_PIN_SET );
+    }
+    if( leds & LED_SCAN_MASK )
+    {
+        /* LED SCAN */
+        hal_gpio_set_value( LED_SCAN, GPIO_PIN_SET );
     }
 }
 
@@ -95,13 +102,18 @@ void leds_off( uint8_t leds ){
 
     if( leds & LED_TX_MASK )
     {
-        // LED1
+        /* LED TX */
         hal_gpio_set_value(LED_TX, GPIO_PIN_RESET );
     }
     if( leds & LED_RX_MASK )
     {
-        // LED2
+        /* LED RX */
         hal_gpio_set_value(LED_RX, GPIO_PIN_RESET );
+    }
+    if( leds & LED_SCAN_MASK )
+    {
+        /* LED SCAN */
+        hal_gpio_set_value( LED_SCAN, GPIO_PIN_RESET );
     }
 }
 
@@ -109,25 +121,30 @@ void leds_toggle( uint8_t leds ){
 
     if( leds & LED_TX_MASK )
     {
-        // LED1
+        /* LED TX */
         hal_gpio_toggle( LED_TX );
     }
     if( leds & LED_RX_MASK )
     {
-        // LED2
+        /* LED RX */
         hal_gpio_toggle( LED_RX );
+    }
+    if( leds & LED_SCAN_MASK )
+    {
+        /* LED SCAN */
+        hal_gpio_toggle( LED_SCAN );
     }
 }
 
 void leds_blink( uint8_t leds, uint32_t delay, uint8_t nb_blink, bool reset_leds )
-{  
-    uint8_t i=0;
-    
-    if(reset_leds == true)
+{
+    uint8_t i = 0;
+
+    if( reset_leds == true )
     {
         leds_off( LED_ALL_MASK );
     }
-    
+
     while( i < nb_blink )
     {
         i++;

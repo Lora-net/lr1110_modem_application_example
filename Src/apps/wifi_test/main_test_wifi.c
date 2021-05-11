@@ -1,7 +1,7 @@
 /*!
- * \file      main_test_wifi.c
+ * @file      main_test_wifi.c
  *
- * \brief     Wi-Fi test implementation
+ * @brief     Wi-Fi test implementation
  *
  * Revised BSD License
  * Copyright Semtech Corporation 2020. All rights reserved.
@@ -35,7 +35,7 @@
  */
 
 #include "wifi_scan.h"
-#include "lr1110-modem-board.h"
+#include "lr1110_modem_board.h"
 
 /*
  * -----------------------------------------------------------------------------
@@ -58,7 +58,7 @@
  */
 
 /*!
- * \brief Radio hardware and global parameters
+ * @brief Radio hardware and global parameters
  */
 extern lr1110_t lr1110;
 
@@ -68,9 +68,9 @@ extern lr1110_t lr1110;
  */
 
 /*!
- * \brief Reset event callback
+ * @brief Reset event callback
  *
- * \param [in] reset_count reset counter from the modem
+ * @param [in] reset_count reset counter from the modem
  */
 static void lr1110_modem_reset_event( uint16_t reset_count );
 
@@ -80,20 +80,23 @@ static void lr1110_modem_reset_event( uint16_t reset_count );
  */
 
 /**
- * \brief Main application entry point.
+ * @brief Main application entry point.
  */
 int main( void )
 {
-    lr1110_modem_event_t   lr1110_modem_event = {};
-    lr1110_modem_version_t modem;
-    wifi_settings_t        wifi_settings;
+    lr1110_modem_event_t           lr1110_modem_event = { };
+    lr1110_modem_version_t         modem;
+    wifi_settings_t                wifi_settings;
+    static wifi_scan_all_results_t capture_result;
 
-    // Init board
+    /* Init board */
     hal_mcu_init( );
-
     hal_mcu_init_periph( );
 
-    // Init LR1110 modem event
+    /* Board is initialized */
+    leds_blink( LED_ALL_MASK, 100, 2, true );
+
+    /* Init LR1110 modem event */
     lr1110_modem_event.wifi_scan_done = lr1110_modem_wifi_scan_done;
     lr1110_modem_event.reset          = lr1110_modem_reset_event;
     lr1110_modem_board_init( &lr1110, &lr1110_modem_event );
@@ -101,17 +104,17 @@ int main( void )
     HAL_DBG_TRACE_MSG( "\r\n\r\n" );
     HAL_DBG_TRACE_INFO( "###### ===== LR1110 Modem Wi-Fi demo application ==== ######\r\n\r\n" );
 
-    // LR1110 modem version
+    /* LR1110 modem version */
     lr1110_modem_get_version( &lr1110, &modem );
     HAL_DBG_TRACE_PRINTF( "LORAWAN     : %#04X\r\n", modem.lorawan );
     HAL_DBG_TRACE_PRINTF( "FIRMWARE    : %#02X\r\n", modem.firmware );
     HAL_DBG_TRACE_PRINTF( "BOOTLOADER  : %#02X\r\n\r\n", modem.bootloader );
 
-    // Wi-Fi Parameters
+    /* Wi-Fi Parameters */
     wifi_settings.enabled       = true;
     wifi_settings.channels      = 0x3FFF;  // by default enable all channels
     wifi_settings.types         = LR1110_MODEM_WIFI_TYPE_SCAN_B;
-    wifi_settings.scan_mode     = LR1110_MODEM_WIFI_SCAN_MODE_BEACON_AND_PACKET;
+    wifi_settings.scan_mode     = LR1110_MODEM_WIFI_SCAN_MODE_BEACON_AND_PKT;
     wifi_settings.nbr_retrials  = WIFI_NBR_RETRIALS_DEFAULT;
     wifi_settings.max_results   = WIFI_MAX_RESULTS_DEFAULT;
     wifi_settings.timeout       = WIFI_TIMEOUT_IN_MS_DEFAULT;
@@ -119,11 +122,16 @@ int main( void )
 
     while( 1 )
     {
-        wifi_init( &lr1110, wifi_settings );
+        HAL_DBG_TRACE_INFO( "###### ===== Wi-FI SCAN ==== ######\r\n\r\n" );
 
-        wifi_execute_scan( &lr1110 );
-
-        lr1110_display_wifi_scan_results( );
+        if( wifi_execute_scan( &lr1110, &wifi_settings, &capture_result ) == WIFI_SCAN_SUCCESS )
+        {
+            lr1110_modem_display_wifi_scan_results( &capture_result );
+        }
+        else
+        {
+            HAL_DBG_TRACE_MSG( "Wi-Fi Scan error\n\r" );
+        }
 
         HAL_Delay( 1000 );
     }
@@ -140,7 +148,7 @@ static void lr1110_modem_reset_event( uint16_t reset_count )
 
     if( lr1110_modem_board_is_ready( ) == true )
     {
-        // System reset
+        /* System reset */
         hal_mcu_reset( );
     }
     else

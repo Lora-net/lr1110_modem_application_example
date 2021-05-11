@@ -1,7 +1,7 @@
 /*!
- * \file      smtc_hal.h
+ * @file      smtc_hal.h
  *
- * \brief     Board specific package API definition.
+ * @brief     Board specific package API definition.
  *
  * Revised BSD License
  * Copyright Semtech Corporation 2020. All rights reserved.

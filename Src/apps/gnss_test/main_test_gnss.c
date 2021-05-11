@@ -1,7 +1,7 @@
 /*!
- * \file      main_test_gnss.c
+ * @file      main_test_gnss.c
  *
- * \brief     GNSS Test implementation
+ * @brief     GNSS Test implementation
  *
  * Revised BSD License
  * Copyright Semtech Corporation 2020. All rights reserved.
@@ -35,7 +35,7 @@
  */
 
 #include "gnss_scan.h"
-#include "lr1110-modem-board.h"
+#include "lr1110_modem_board.h"
 
 /*
  * -----------------------------------------------------------------------------
@@ -46,8 +46,8 @@
  * -----------------------------------------------------------------------------
  * --- PRIVATE CONSTANTS -------------------------------------------------------
  */
- 
- #define EPOCH_BUFFER_LEN 10
+
+#define EPOCH_BUFFER_LEN 10
 
 /*
  * -----------------------------------------------------------------------------
@@ -60,7 +60,7 @@
  */
 
 /*!
- * \brief Radio hardware and global parameters
+ * @brief Radio hardware and global parameters
  */
 extern lr1110_t lr1110;
 
@@ -70,9 +70,9 @@ extern lr1110_t lr1110;
  */
 
 /*!
- * \brief Reset event callback
+ * @brief Reset event callback
  *
- * \param [in] reset_count reset counter from the modem
+ * @param [in] reset_count reset counter from the modem
  */
 static void lr1110_modem_reset_event( uint16_t reset_count );
 
@@ -82,23 +82,24 @@ static void lr1110_modem_reset_event( uint16_t reset_count );
  */
 
 /**
- * \brief Main application entry point.
+ * @brief Main application entry point.
  */
 int main( void )
 {
     lr1110_modem_response_code_t modem_response_code = LR1110_MODEM_RESPONSE_CODE_OK;
-    lr1110_modem_event_t         lr1110_modem_event = {};
+    lr1110_modem_event_t         lr1110_modem_event  = { };
     lr1110_modem_version_t       modem;
     gnss_settings_t              gnss_settings;
-    uint32_t                     unix_date     = 0;
+    uint32_t                     unix_date                   = 0;
     uint8_t                      rx_buffer[EPOCH_BUFFER_LEN] = { 0 };
+    gnss_scan_single_result_t    capture_result;
 
-    // Init board
+    /* Init board */
     hal_mcu_init( );
 
     hal_mcu_init_periph( );
 
-    // Init LR1110 modem event
+    /* Init LR1110 modem event */
     lr1110_modem_event.gnss_scan_done = lr1110_modem_gnss_scan_done;
     lr1110_modem_event.reset          = lr1110_modem_reset_event;
     lr1110_modem_board_init( &lr1110, &lr1110_modem_event );
@@ -106,25 +107,25 @@ int main( void )
     HAL_DBG_TRACE_MSG( "\r\n\r\n" );
     HAL_DBG_TRACE_INFO( "###### ===== LR1110 Modem GNSS demo application ==== ######\r\n\r\n" );
 
-    // LR1110 modem version
+    /* LR1110 modem version */
     lr1110_modem_get_version( &lr1110, &modem );
     HAL_DBG_TRACE_PRINTF( "LORAWAN     : %#04X\r\n", modem.lorawan );
     HAL_DBG_TRACE_PRINTF( "FIRMWARE    : %#02X\r\n", modem.firmware );
     HAL_DBG_TRACE_PRINTF( "BOOTLOADER  : %#02X\r\n\r\n", modem.bootloader );
 
-    // GNSS Parameters
+    /* GNSS Parameters */
     gnss_settings.enabled              = true;
     gnss_settings.constellation_to_use = LR1110_MODEM_GNSS_GPS_MASK | LR1110_MODEM_GNSS_BEIDOU_MASK;
     gnss_settings.scan_type            = ASSISTED_MODE;
     gnss_settings.search_mode          = LR1110_MODEM_GNSS_OPTION_DEFAULT;
 
-    // Set default position to Semtech France
+    /* Set default position to Semtech France */
     gnss_settings.assistance_position.latitude  = 45.208;
     gnss_settings.assistance_position.longitude = 5.781;
-    
+
     lr1110_modem_gnss_set_assistance_position( &lr1110, &gnss_settings.assistance_position );
 
-    // Wait Unix time from user
+    /* Wait Unix time from user */
     HAL_DBG_TRACE_INFO( "###### ===== PLEASE ENTER AN UNIX DATE IN ASCII ==== ######\r\n\r\n" );
 
     while( unix_date == 0 )
@@ -136,27 +137,30 @@ int main( void )
             unix_date += ( rx_buffer[9 - i] - 48 ) * pow( 10, i );
         }
     }
+
+    HAL_Delay( 1000 );
+
     modem_response_code =
         lr1110_modem_set_gps_time( &lr1110, unix_date - GNSS_EPOCH_SECONDS + GNSS_LEAP_SECONDS_OFFSET );
 
     HAL_DBG_TRACE_PRINTF( "\r\nEpoch time: %u\n\r", unix_date );
 
+    HAL_Delay( 1000 );
+
     while( 1 )
     {
         HAL_DBG_TRACE_MSG( "\r\nSCAN...\r\n" );
-        
+
         /* Activate the partial low power mode to don't shut down lna during low power */
         hal_mcu_partial_sleep_enable( true );
 
-        gnss_scan_init( &lr1110, gnss_settings );
+        gnss_scan_execute( &lr1110, &gnss_settings, &capture_result );
+        gnss_scan_display_results( &capture_result );
 
-        gnss_scan_execute( &lr1110 );
-
-        gnss_scan_display_results( );
-        
         /* Deactivate the partial low power mode */
         hal_mcu_partial_sleep_enable( false );
 
+        /* Wait 1 sec*/
         HAL_Delay( 1000 );
     }
 }
@@ -172,7 +176,7 @@ static void lr1110_modem_reset_event( uint16_t reset_count )
 
     if( lr1110_modem_board_is_ready( ) == true )
     {
-        // System reset
+        /* System reset */
         hal_mcu_reset( );
     }
     else

@@ -1,7 +1,7 @@
 /*!
- * @file      smtc_hal_watchdog.h
+ * @file      lorawan_config.h
  *
- * @brief     Board specific package WATCHDOG management API definition.
+ * @brief     LoRaWAN configuration definition
  *
  * Revised BSD License
  * Copyright Semtech Corporation 2020. All rights reserved.
@@ -28,8 +28,9 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-#ifndef __SMTC_HAL_WATCHDOG_H__
-#define __SMTC_HAL_WATCHDOG_H__
+
+#ifndef LORAWAN_CONFIG_H
+#define LORAWAN_CONFIG_H
 
 #ifdef __cplusplus
 extern "C" {
@@ -40,8 +41,7 @@ extern "C" {
  * --- DEPENDENCIES ------------------------------------------------------------
  */
 
-#include <stdint.h>   // C99 types
-#include <stdbool.h>  // bool type
+#include "lr1110_modem_board.h"
 
 /*
  * -----------------------------------------------------------------------------
@@ -52,6 +52,58 @@ extern "C" {
  * -----------------------------------------------------------------------------
  * --- PUBLIC CONSTANTS --------------------------------------------------------
  */
+
+/*!
+ * @brief LoRaWAN ETSI duty cycle control enable/disable
+ *
+ * @remark Please note that ETSI mandates duty cycled transmissions. Set to false only for test purposes
+ */
+#define LORAWAN_DUTYCYCLE_ON LR1110_MODEM_DUTY_CYCLE_ENABLE
+
+/*!
+ * @brief LoRaWAN confirmed messages
+ */
+#define LORAWAN_CONFIRMED_MSG_ON false
+
+#if defined( USE_LORAWAN_CLASS_A )
+    #define LORAWAN_CLASS_USED LR1110_LORAWAN_CLASS_A
+#elif defined( USE_LORAWAN_CLASS_C )
+    #define LORAWAN_CLASS_USED LR1110_LORAWAN_CLASS_C
+#else
+    #define LORAWAN_CLASS_USED LR1110_LORAWAN_CLASS_A
+#endif
+
+/*!
+ * @brief Default datarate
+ */
+#define LORAWAN_DEFAULT_DATARATE LR1110_MODEM_ADR_PROFILE_NETWORK_SERVER_CONTROLLED
+    
+/*!
+ * @brief LoRaWAN confirmed messages
+ */   
+#if defined( USE_REGION_EU868 )
+    #define LORAWAN_REGION_USED LR1110_LORAWAN_REGION_EU868
+#elif defined( USE_REGION_US915 )
+    #define LORAWAN_REGION_USED LR1110_LORAWAN_REGION_US915
+#elif defined( USE_REGION_AU915 )
+    #define LORAWAN_REGION_USED LR1110_LORAWAN_REGION_AU915
+#elif defined( USE_REGION_AS923_GRP1 )
+    #define LORAWAN_REGION_USED LR1110_LORAWAN_REGION_AS923_GRP1
+#elif defined( USE_REGION_CN470 )
+    #define LORAWAN_REGION_USED LR1110_LORAWAN_REGION_CN470
+#elif defined( USE_REGION_AS923_GRP2 )
+    #define LORAWAN_REGION_USED LR1110_LORAWAN_REGION_AS923_GRP2
+#elif defined( USE_REGION_AS923_GRP3 )
+    #define LORAWAN_REGION_USED LR1110_LORAWAN_REGION_AS923_GRP3
+#elif defined( USE_REGION_IN865 )
+    #define LORAWAN_REGION_USED LR1110_LORAWAN_REGION_IN865
+ #elif defined( USE_REGION_KR920 )
+    #define LORAWAN_REGION_USED LR1110_LORAWAN_REGION_KR920
+#elif defined( USE_REGION_RU864 )
+    #define LORAWAN_REGION_USED LR1110_LORAWAN_REGION_RU864
+#else
+    #error No region selected: define a region
+#endif
 
 /*
  * -----------------------------------------------------------------------------
@@ -64,25 +116,19 @@ extern "C" {
  */
 
 /*!
- * @brief Initializes the MCU watchdog peripheral
+ * @brief Lorawan default init
  *
- * @remark The watchdog period is equal to WATCHDOG_RELOAD_PERIOD seconds
+ * @param [in] region LoRaWAN region to use \ref lr1110_modem_regions_t
+ * @param [in] lorawan_class LoRaWAN class to use \ref lr1110_modem_classes_t
+ *
+ * @returns Operation status
  */
-void hal_watchdog_init( void );
-
-/*!
- * @brief Reloads watchdog counter
- *
- * @remark Application has to call this function periodically.
- *         The call period must be less than WATCHDOG_RELOAD_PERIOD
- *
- */
-void hal_watchdog_reload( void );
+lr1110_modem_response_code_t lorawan_init( lr1110_modem_regions_t region, lr1110_modem_classes_t lorawan_class );
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif  // __SMTC_HAL_WATCHDOG_H__
+#endif  // LORAWAN_CONFIG_H
 
 /* --- EOF ------------------------------------------------------------------ */

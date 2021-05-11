@@ -1,7 +1,7 @@
 /*!
- * \file      lr1110.c
+ * @file      lr1110.c
  *
- * \brief     LR1110 top level implementation
+ * @brief     LR1110 top level implementation
  *
  * Revised BSD License
  * Copyright Semtech Corporation 2020. All rights reserved.
@@ -35,7 +35,7 @@
  */
 
 #include "lr1110.h"
-#include "lr1110-modem-board.h"
+#include "lr1110_modem_board.h"
 
 /*
  * -----------------------------------------------------------------------------
@@ -58,7 +58,7 @@
  */
 
 /*!
- * \brief lr1110 modem event callback functions
+ * @brief lr1110 modem event callback functions
  */
 lr1110_modem_event_t* lr1110_modem_event;
 
@@ -68,7 +68,7 @@ lr1110_modem_event_t* lr1110_modem_event;
  */
 
 /*!
- * \brief Hardware INT IRQ callback initialization
+ * @brief Hardware INT IRQ callback initialization
  */
 void radio_event_callback( void* obj );
 
@@ -76,7 +76,7 @@ void radio_event_callback( void* obj );
  * -----------------------------------------------------------------------------
  * --- PUBLIC FUNCTIONS DEFINITION ---------------------------------------------
  */
- 
+
 void radio_event_init( lr1110_modem_event_t* event ) { lr1110_modem_event = event; }
 
 void lr1110_modem_event_process( const void* context )
@@ -128,17 +128,19 @@ void lr1110_modem_event_process( const void* context )
                     if( ( lr1110_modem_event != NULL ) && ( lr1110_modem_event->down_data != NULL ) )
                     {
                         int8_t  rssi  = ( ( int8_t ) event_fields.buffer[0] ) - 64;
-                        int8_t  snr   = ( ( int8_t ) event_fields.buffer[1] >> 2 );
+                        int8_t  snr   = ( ( ( int8_t ) event_fields.buffer[1] ) >> 2 );
                         uint8_t flags = event_fields.buffer[2];
                         uint8_t port  = event_fields.buffer[3];
-                        uint8_t buffer_size = event_fields.buffer_len - 4;  // remove rssi/snr/flags and port from buffer
+                        uint8_t buffer_size =
+                            event_fields.buffer_len - 4;  // remove rssi/snr/flags and port from buffer
 
                         for( uint8_t i = 0; i < buffer_size; i++ )
                         {
                             event_fields.buffer[i] = event_fields.buffer[i + 4];
                         }
 
-                        lr1110_modem_event->down_data( rssi, snr, ( lr1110_modem_down_data_flag_t ) flags, port, event_fields.buffer, buffer_size );
+                        lr1110_modem_event->down_data( rssi, snr, ( lr1110_modem_down_data_flag_t ) flags, port,
+                                                       event_fields.buffer, buffer_size );
                     }
                     break;
                 case LR1110_MODEM_LORAWAN_EVENT_UPLOAD_DONE:
@@ -209,7 +211,11 @@ void lr1110_modem_event_process( const void* context )
                     break;
                 }
             }
-        } while( ( lr1110_modem_board_read_event_line( context ) == 1 ) && ( modem_response_code == LR1110_MODEM_RESPONSE_CODE_OK ) );
+            else
+            {
+                HAL_DBG_TRACE_WARNING( "lr1110_modem_get_event RC : %d\r\n", modem_response_code );
+            }
+        } while( lr1110_modem_board_read_event_line( context ) == 1 );
     }
 }
 

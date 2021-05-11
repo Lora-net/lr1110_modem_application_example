@@ -55,9 +55,9 @@ extern "C" {
  */
 
 /*!
- * \brief LNA SUPPLY MASK
+ * @brief LNA SUPPLY MASK
  */
-#define LNA_SUPPLY_MASK             0x01
+#define LNA_SUPPLY_MASK 0x01
 
 /*
  * -----------------------------------------------------------------------------
@@ -70,26 +70,26 @@ extern "C" {
  */
 
 /*!
- * \brief Init External supply
+ * @brief Init External supply
  *
- * \param [in] vcc_mask Supply MASK to turn on supply 
+ * @param [in] vcc_mask Supply MASK to turn on supply
  */
 void external_supply_init( uint8_t vcc_mask );
 
 /*!
- * \brief Deinit External supply
+ * @brief Deinit External supply
  *
- * \param [in] vcc_mask Supply MASK to turn off supply 
+ * @param [in] vcc_mask Supply MASK to turn off supply
  */
 void external_supply_deinit( uint8_t vcc_mask );
 
 /*!
- * \brief Turn ON the LNA
+ * @brief Turn ON the LNA
  */
 void lna_on( void );
 
 /*!
- * \brief Turn Off the LNA
+ * @brief Turn Off the LNA
  */
 void lna_off( void );
 

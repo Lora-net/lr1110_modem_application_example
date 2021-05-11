@@ -1,7 +1,7 @@
 /*!
- * \file      smtc_hal_options.h
+ * @file      smtc_hal_options.h
  *
- * \brief     SMTC Hardware abstraction layer OPTIONS management API definition.
+ * @brief     SMTC Hardware abstraction layer OPTIONS management API definition.
  *
  * Revised BSD License
  * Copyright Semtech Corporation 2020. All rights reserved.
@@ -59,14 +59,13 @@ extern "C" {
 #define HAL_DBG_TRACE                               HAL_FEATURE_ON
 #define HAL_DBG_TRACE_COLOR                         HAL_FEATURE_ON
 
-// HAL_FEATURE_ON to activate sleep mode
+/* HAL_FEATURE_ON to activate sleep mode */
 
-// HAL_FEATURE_OFF to deactivate sleep mode
+/* HAL_FEATURE_OFF to deactivate sleep mode */
 #define HAL_LOW_POWER_MODE                          HAL_FEATURE_ON
 
-// HAL_FEATURE_ON to enable debug probe, not disallocating corresponding pins
+/* HAL_FEATURE_ON to enable debug probe, not disallocating corresponding pins */
 #define HAL_HW_DEBUG_PROBE                          HAL_FEATURE_OFF
-
 
 #define HAL_USE_PRINTF_UART                         HAL_FEATURE_ON
 #define HAL_PRINTF_UART_ID                          2
@@ -76,13 +75,13 @@ extern "C" {
 
 #define HAL_I2C_ID                                  1
 
-// HAL_FEATURE_OFF to not use watchdog
-#define HAL_USE_WATCHDOG                            HAL_FEATURE_OFF
+/* HAL_FEATURE_OFF to not use watchdog */
+#define HAL_USE_WATCHDOG                            HAL_FEATURE_ON
 
 /*!
  * Watchdog counter reload value
  *
- * \remark The period must be lower than MCU watchdog period
+ * @remark The period must be lower than MCU watchdog period
  */
 #define HAL_WATCHDOG_RELOAD_PERIOD_SECONDS          20
 

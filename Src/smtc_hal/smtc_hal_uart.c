@@ -1,7 +1,7 @@
 /*!
- * \file      smtc_hal_uart.c
+ * @file      smtc_hal_uart.c
  *
- * \brief     Board specific package UART API implementation.
+ * @brief     Board specific package UART API implementation.
  *
  * Revised BSD License
  * Copyright Semtech Corporation 2020. All rights reserved.
@@ -58,7 +58,7 @@
  */
  
  /*!
- * \brief UART structure
+ * @brief UART structure
  */
 typedef struct hal_uart_s
 {

@@ -1,7 +1,7 @@
 /*!
- * \file      smtc_hal_spi.c
+ * @file      smtc_hal_spi.c
  *
- * \brief     Implements the spi HAL functions.
+ * @brief     Implements the spi HAL functions.
  *
  * Revised BSD License
  * Copyright Semtech Corporation 2020. All rights reserved.

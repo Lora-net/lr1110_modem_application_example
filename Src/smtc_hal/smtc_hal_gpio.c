@@ -1,7 +1,7 @@
 /*!
- * \file      smtc_hal_gpio.c
+ * @file      smtc_hal_gpio.c
  *
- * \brief     Implements the gpio HAL functions
+ * @brief     Implements the gpio HAL functions
  *
  * Revised BSD License
  * Copyright Semtech Corporation 2020. All rights reserved.
@@ -62,7 +62,7 @@
  */
 
 /*!
- * \brief Array holding attached IRQ gpio data context
+ * @brief Array holding attached IRQ gpio data context
  */
 static hal_gpio_irq_t const* gpio_irq[16];
 
@@ -74,9 +74,9 @@ static hal_gpio_irq_t const* gpio_irq[16];
 /*!
  * Generic gpio initialization
  *
- * \param [in/out] gpio  Holds MCU gpio parameters
- * \param [in]     value Initial MCU pit value
- * \param [in/out] irq   Pointer to IRQ data context.
+ * @param [in/out] gpio  Holds MCU gpio parameters
+ * @param [in]     value Initial MCU pit value
+ * @param [in/out] irq   Pointer to IRQ data context.
  *                         NULL when setting gpio as output
  */
 static void hal_gpio_init( const hal_gpio_t* gpio, const uint32_t value, const hal_gpio_irq_t* irq );
@@ -107,9 +107,9 @@ void hal_gpio_deinit( const hal_gpio_pin_names_t pin )
     hal_gpio_init( &gpio, GPIO_PIN_RESET, NULL );
 }
 
-//
-// MCU input pin Handling
-//
+/**
+* @brief MCU input pin Handling
+*/
 
 void hal_gpio_init_in( const hal_gpio_pin_names_t pin,
                        const gpio_pull_mode_t     pull_mode,
@@ -125,10 +125,10 @@ void hal_gpio_init_in( const hal_gpio_pin_names_t pin,
                         .pull      = pulls[pull_mode],
                         .speed     = GPIO_SPEED_FREQ_LOW,
                         .alternate = 0 };
-	if(irq != NULL)
-	{
-		irq->pin        = pin;
-	}
+    if(irq != NULL)
+    {
+        irq->pin        = pin;
+    }
     hal_gpio_init( &gpio, GPIO_PIN_RESET, irq );
 }
 
@@ -170,9 +170,9 @@ void hal_gpio_irq_disable( void )
     HAL_NVIC_DisableIRQ( EXTI15_10_IRQn );
 }
 
-//
-// MCU pin state control
-//
+/**
+* @brief MCU pin state control
+*/
 
 void hal_gpio_set_value( const hal_gpio_pin_names_t pin, const uint32_t value )
 {
@@ -213,9 +213,10 @@ bool hal_gpio_is_pending_irq( void )
                ? true
                : false;
 }
-//
-// MCU pin control private functions
-//
+
+/**
+* @brief MCU pin control private functions
+*/
 
 static void hal_gpio_init( const hal_gpio_t* gpio, const uint32_t value,
                            const hal_gpio_irq_t* irq )
@@ -229,32 +230,32 @@ static void hal_gpio_init( const hal_gpio_t* gpio, const uint32_t value,
     gpio_local.Pull      = gpio->pull;
     gpio_local.Speed     = gpio->speed;
     gpio_local.Alternate = gpio->alternate;
-	
-	if(gpio_port == GPIOA)
-	{
-		__HAL_RCC_GPIOA_CLK_ENABLE( );
-	}
-	else if(gpio_port == GPIOB)
-	{
-		__HAL_RCC_GPIOB_CLK_ENABLE( );
-	}
-	else if(gpio_port == GPIOC)
-	{
-		__HAL_RCC_GPIOC_CLK_ENABLE( );
-	}
-	else if(gpio_port == GPIOD)
-	{
-		__HAL_RCC_GPIOD_CLK_ENABLE( );
-	}
-	else if(gpio_port == GPIOE)
-	{
-		__HAL_RCC_GPIOE_CLK_ENABLE( );
-	}
-	else if(gpio_port == GPIOH)
-	{
-		__HAL_RCC_GPIOH_CLK_ENABLE( );
-	}
-	
+
+    if(gpio_port == GPIOA)
+    {
+        __HAL_RCC_GPIOA_CLK_ENABLE( );
+    }
+    else if(gpio_port == GPIOB)
+    {
+        __HAL_RCC_GPIOB_CLK_ENABLE( );
+    }
+    else if(gpio_port == GPIOC)
+    {
+        __HAL_RCC_GPIOC_CLK_ENABLE( );
+    }
+    else if(gpio_port == GPIOD)
+    {
+        __HAL_RCC_GPIOD_CLK_ENABLE( );
+    }
+    else if(gpio_port == GPIOE)
+    {
+        __HAL_RCC_GPIOE_CLK_ENABLE( );
+    }
+    else if(gpio_port == GPIOH)
+    {
+        __HAL_RCC_GPIOH_CLK_ENABLE( );
+    }
+    
     HAL_GPIO_WritePin( gpio_port, gpio_local.Pin, ( GPIO_PinState ) value );
     HAL_GPIO_Init( gpio_port, &gpio_local );
 
@@ -301,9 +302,9 @@ static void hal_gpio_init( const hal_gpio_t* gpio, const uint32_t value,
     }
 }
 
-//
-// MCU interrupt handlers
-//
+/**
+* @brief MCU interrupt handlers
+*/
 
 void HAL_GPIO_EXTI_Callback( uint16_t gpio_pin )
 {

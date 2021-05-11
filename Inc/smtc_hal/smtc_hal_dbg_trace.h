@@ -1,7 +1,7 @@
 /*!
- * \file      smtc_hal_dbg_trace.h
+ * @file      smtc_hal_dbg_trace.h
  *
- * \brief     Board specific package debug log API definition.
+ * @brief     Board specific package debug log API definition.
  *
  * Revised BSD License
  * Copyright Semtech Corporation 2020. All rights reserved.

@@ -1,7 +1,7 @@
 /*!
- * \file      lr1110-modem-board.c
+ * @file      lr1110-modem-board.c
  *
- * \brief     Target board LR1110 tracker boards driver implementation
+ * @brief     Target board LR1110 tracker boards driver implementation
  *
  * Revised BSD License
  * Copyright Semtech Corporation 2020. All rights reserved.
@@ -39,7 +39,7 @@
 #include "lr1110_modem_hal.h"
 #include "lr1110_modem_system.h"
 #include "lr1110_modem_lorawan.h"
-#include "lr1110-modem-board.h"
+#include "lr1110_modem_board.h"
 #include "lr1110.h"
 
 /*
@@ -52,8 +52,7 @@
  * --- PRIVATE CONSTANTS -------------------------------------------------------
  */
 
-#define GNSS_LEAP_SECONDS_OFFSET 18
-#define GNSS_EPOCH_SECONDS 315964800  // 6/01/1980
+#define GNSS_WEEK_NUMBER_ROLLOVER_2019_2038 2
 
 /*
  * -----------------------------------------------------------------------------
@@ -66,7 +65,7 @@
  */
 
 /*!
- * \brief modem ready flag
+ * @brief modem ready flag
  */
 static bool modem_is_ready = false;
 
@@ -76,9 +75,9 @@ static bool modem_is_ready = false;
  */
 
 /*!
- * \brief initialize the TCXO
+ * @brief initialize the TCXO
  *
- * \param [in] context Chip implementation context
+ * @param [in] context Chip implementation context
  */
 static lr1110_modem_response_code_t lr1110_modem_board_init_tcxo_io( const void* context );
 
@@ -99,11 +98,11 @@ void lr1110_modem_board_init_io_context( void* context )
     ( ( lr1110_t* ) context )->event.pin      = RADIO_EVENT;
     ( ( lr1110_t* ) context )->event.callback = radio_event_callback;
     ( ( lr1110_t* ) context )->event.context  = ( ( lr1110_t* ) context );
-    ( ( lr1110_t* ) context )->busy.pin = RADIO_BUSY_PIN;
-    ( ( lr1110_t* ) context )->spi.pins.miso = RADIO_SPI_MISO;
-    ( ( lr1110_t* ) context )->spi.pins.mosi = RADIO_SPI_MOSI;
-    ( ( lr1110_t* ) context )->spi.pins.sclk = RADIO_SPI_SCLK;
-    ( ( lr1110_t* ) context )->spi_id = HAL_RADIO_SPI_ID;
+    ( ( lr1110_t* ) context )->busy.pin       = RADIO_BUSY;
+    ( ( lr1110_t* ) context )->spi.pins.miso  = RADIO_MISO;
+    ( ( lr1110_t* ) context )->spi.pins.mosi  = RADIO_MOSI;
+    ( ( lr1110_t* ) context )->spi.pins.sclk  = RADIO_SCLK;
+    ( ( lr1110_t* ) context )->spi_id         = HAL_RADIO_SPI_ID;
 }
 
 void lr1110_modem_board_init_io( const void* context )
@@ -132,23 +131,18 @@ void lr1110_modem_board_analog_deinit_io( const void* context )
     hal_gpio_deinit( ( ( lr1110_t* ) context )->busy.pin );
 }
 
-void lr1110_modem_board_set_rf_tx_power_offset( const void* context, int8_t tx_power_offset )
-{
-    lr1110_modem_set_tx_power_offset( context, tx_power_offset );
-}
-
-uint32_t lr1110_modem_board_get_tcxo_wakeup_time( const void* context ) { return BOARD_TCXO_WAKEUP_TIME; }
+uint32_t lr1110_modem_board_get_tcxo_wakeup_time( void ) { return BOARD_TCXO_WAKEUP_TIME; }
 
 lr1110_modem_response_code_t lr1110_modem_board_init( const void* context, lr1110_modem_event_t* event )
 {
     lr1110_modem_response_code_t modem_response_code = LR1110_MODEM_RESPONSE_CODE_OK;
-    lr1110_modem_hal_status_t modem_hal_status = LR1110_MODEM_HAL_STATUS_OK;
+    lr1110_modem_hal_status_t    modem_hal_status    = LR1110_MODEM_HAL_STATUS_OK;
 
     radio_event_init( event );
 
     modem_hal_status = lr1110_modem_hal_reset( context );
-    
-    if( modem_hal_status != LR1110_MODEM_HAL_STATUS_OK)
+
+    if( modem_hal_status != LR1110_MODEM_HAL_STATUS_OK )
     {
         /* Something goes wrong with the lr1110 modem */
         return LR1110_MODEM_RESPONSE_CODE_FAIL;
@@ -159,21 +153,22 @@ lr1110_modem_response_code_t lr1110_modem_board_init( const void* context, lr111
 
     /* Initialize RF switch control */
     lr1110_modem_system_rf_switch_cfg_t rf_switch_cfg;
-    rf_switch_cfg.enable  = LR1110_MODEM_SYSTEM_RFSW0_HIGH | LR1110_MODEM_SYSTEM_RFSW1_HIGH | LR1110_MODEM_SYSTEM_RFSW2_HIGH;
+    rf_switch_cfg.enable = LR1110_MODEM_SYSTEM_RFSW0_HIGH | LR1110_MODEM_SYSTEM_RFSW1_HIGH |
+                           LR1110_MODEM_SYSTEM_RFSW2_HIGH | LR1110_MODEM_SYSTEM_RFSW3_HIGH;
     rf_switch_cfg.standby = 0;
     /* LoRa SPDT */
-    rf_switch_cfg.rx = LR1110_MODEM_SYSTEM_RFSW0_HIGH;
-    rf_switch_cfg.tx = LR1110_MODEM_SYSTEM_RFSW0_HIGH | LR1110_MODEM_SYSTEM_RFSW1_HIGH;
-    rf_switch_cfg.tx_hp = LR1110_MODEM_SYSTEM_RFSW1_HIGH;
+    rf_switch_cfg.rx = LR1110_MODEM_SYSTEM_RFSW0_HIGH | LR1110_MODEM_SYSTEM_RFSW3_HIGH;
+    rf_switch_cfg.tx = LR1110_MODEM_SYSTEM_RFSW0_HIGH | LR1110_MODEM_SYSTEM_RFSW1_HIGH | LR1110_MODEM_SYSTEM_RFSW3_HIGH;
+    rf_switch_cfg.tx_hp = LR1110_MODEM_SYSTEM_RFSW1_HIGH | LR1110_MODEM_SYSTEM_RFSW3_HIGH;
     /* GNSS LNA ON */
-    rf_switch_cfg.gnss =  LR1110_MODEM_SYSTEM_RFSW2_HIGH;
+    rf_switch_cfg.gnss = LR1110_MODEM_SYSTEM_RFSW2_HIGH;
 
     modem_response_code |= lr1110_modem_system_set_dio_as_rf_switch( context, &rf_switch_cfg );
 
     /* Set Pa Config */
-    modem_response_code |= lr1110_modem_set_rf_output(context, LR1110_MODEM_RADIO_PA_SEL_LP_HP_LF);
+    modem_response_code |= lr1110_modem_set_rf_output( context, LR1110_MODEM_RADIO_PA_SEL_LP_HP_LF );
 
-    modem_response_code |= lr1110_modem_system_set_reg_mode(context, LR1110_MODEM_SYSTEM_REG_MODE_DCDC);
+    modem_response_code |= lr1110_modem_system_set_reg_mode( context, LR1110_MODEM_SYSTEM_REG_MODE_LDO );
 
     return modem_response_code;
 }
@@ -181,8 +176,44 @@ lr1110_modem_response_code_t lr1110_modem_board_init( const void* context, lr111
 uint32_t lr1110_modem_board_get_systime_from_gps( const void* context )
 {
     uint32_t gps_time;
-    lr1110_modem_get_gps_time( context, &gps_time );
-    return ( gps_time + ( GNSS_EPOCH_SECONDS - GNSS_LEAP_SECONDS_OFFSET ) );
+    lr1110_modem_helper_get_utc_time( context, &gps_time );
+
+    return gps_time;
+}
+
+void lr1110_modem_get_almanac_dates( const void* context, uint32_t* oldest_almanac_date, uint32_t* newest_almanac_date )
+{
+    uint8_t  i            = 0;
+    uint32_t almanac_date = 0;
+
+    *oldest_almanac_date = 0;
+    *newest_almanac_date = 0;
+
+    for( i = 0; i < 127; i++ )
+    {
+        lr1110_modem_helper_gnss_get_almanac_date_by_index( context, i, &almanac_date,
+                                                            GNSS_WEEK_NUMBER_ROLLOVER_2019_2038 );
+
+        if( almanac_date > 0 )
+        {
+            if( ( *oldest_almanac_date == 0 ) && ( *newest_almanac_date == 0 ) )
+            {
+                *oldest_almanac_date = almanac_date;
+                *newest_almanac_date = almanac_date;
+            }
+            else
+            {
+                if( almanac_date < *oldest_almanac_date )
+                {
+                    *oldest_almanac_date = almanac_date;
+                }
+                if( almanac_date > *newest_almanac_date )
+                {
+                    *newest_almanac_date = almanac_date;
+                }
+            }
+        }
+    }
 }
 
 void lr1110_modem_board_lna_on( void ) { lna_on( ); }
@@ -211,6 +242,73 @@ bool lr1110_modem_board_is_ready( void ) { return modem_is_ready; }
 
 void lr1110_modem_board_set_ready( bool ready ) { modem_is_ready = ready; }
 
+lr1110_modem_response_code_t lr1110_modem_board_measure_battery_drop( const void* context, int32_t* drop,
+                                                                      uint32_t* time_recovery )
+{
+    lr1110_modem_response_code_t modem_response_code = LR1110_MODEM_RESPONSE_CODE_OK;
+    lr1110_modem_regions_t       region;
+    uint32_t                     relaxed_voltage = 0;
+    uint32_t                     tick_vdrop      = 0;
+
+    relaxed_voltage = hal_mcu_get_vref_level( );
+
+    modem_response_code |= lr1110_modem_get_region( context, &region );
+
+    /* Enter in test mode */
+    modem_response_code |= lr1110_modem_test_mode_start( context );
+
+    switch( region )
+    {
+    case LR1110_LORAWAN_REGION_EU868:
+    {
+        modem_response_code |=
+            lr1110_modem_test_tx_cont( context, 868100000, 14, LR1110_MODEM_TST_MODE_SF12,
+                                       LR1110_MODEM_TST_MODE_125_KHZ, LR1110_MODEM_TST_MODE_4_5, 51 );
+        break;
+    }
+    case LR1110_LORAWAN_REGION_US915:
+    {
+        modem_response_code |=
+            lr1110_modem_test_tx_cont( context, 915000000, 14, LR1110_MODEM_TST_MODE_SF10,
+                                       LR1110_MODEM_TST_MODE_125_KHZ, LR1110_MODEM_TST_MODE_4_5, 51 );
+        break;
+    }
+    default:
+    {
+        HAL_DBG_TRACE_ERROR( "This region is not covered by this test\n\r" );
+        break;
+    }
+    }
+
+    /* Wait the drop */
+    HAL_Delay( 2000 );
+
+    /* Measure the drop */
+    *drop = relaxed_voltage - hal_mcu_get_vref_level( );
+
+    /* Leave the test mode */
+    lr1110_modem_test_nop( context );
+    lr1110_modem_test_exit( context );
+
+    HAL_DBG_TRACE_PRINTF( "Battery voltage drop = %d mV\n\r", *drop );
+
+    if( *drop > 0 )
+    {
+        *time_recovery = 0;
+        /* Get Start Tick*/
+        tick_vdrop = HAL_GetTick( );
+        /* Wait 66% of drop recovery */
+        while( ( hal_mcu_get_vref_level( ) < relaxed_voltage - ( *drop / 3 ) ) && ( *time_recovery < 10000 ) )
+        {
+            *time_recovery = HAL_GetTick( ) - tick_vdrop;
+        }
+
+        HAL_DBG_TRACE_PRINTF( "Voltage recovery time = %d ms\n\r", *time_recovery );
+    }
+
+    return modem_response_code;
+}
+
 /*
  * -----------------------------------------------------------------------------
  * --- PRIVATE FUNCTIONS DEFINITION --------------------------------------------
@@ -219,7 +317,7 @@ void lr1110_modem_board_set_ready( bool ready ) { modem_is_ready = ready; }
 static lr1110_modem_response_code_t lr1110_modem_board_init_tcxo_io( const void* context )
 {
     return lr1110_modem_system_set_tcxo_mode( context, LR1110_MODEM_SYSTEM_TCXO_CTRL_1_8V,
-                                              ( lr1110_modem_board_get_tcxo_wakeup_time( context ) * 1000 ) / 30.52 );
+                                              ( lr1110_modem_board_get_tcxo_wakeup_time( ) * 1000 ) / 30.52 );
 }
 
 /* --- EOF ------------------------------------------------------------------ */

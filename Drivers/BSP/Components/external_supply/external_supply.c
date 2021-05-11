@@ -1,7 +1,7 @@
 /*!
- * \file      external_supply.c
+ * @file      external_supply.c
  *
- * \brief     External supply driver implementation.
+ * @brief     External supply driver implementation.
  *
  * Revised BSD License
  * Copyright Semtech Corporation 2020. All rights reserved.

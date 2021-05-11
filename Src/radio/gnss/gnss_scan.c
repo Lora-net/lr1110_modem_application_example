@@ -1,7 +1,7 @@
 /*!
- * \file      gnss_scan.c
+ * @file      gnss_scan.c
  *
- * \brief     GNSS scan implementation.
+ * @brief     GNSS scan implementation.
  *
  * Revised BSD License
  * Copyright Semtech Corporation 2020. All rights reserved.
@@ -35,7 +35,7 @@
  */
 
 #include "gnss_scan.h"
-#include "lr1110-modem-board.h"
+#include "lr1110_modem_board.h"
 
 /*
  * -----------------------------------------------------------------------------
@@ -48,9 +48,31 @@
  */
 
 /*!
- * \brief GNSS scan state machine timeout
+ * @brief GNSS scan state machine timeout
  */
 #define GNSS_SCAN_TIMEOUT ( 15000 )
+
+/*!
+ * @brief GNSS scan timing description
+ *
+ * Assisted mode
+          |                                               |<----- GNSS_SCAN_DOUBLE_CONSTELLATION_INTERVAL --------->|                                            |
+          |<-- ALMANAC_CRC_CHECK -->|<-- TCXCO_STARTUP -->|<-- RADIO_ACQUISITION -->|<-- PROCESSING -->|<-- IDLE -->|<-- RADIO_ACQUISITION -->|<-- PROCESSING -->|
+          |<--------------------(lna off)---------------->|<-------(lna on)-------->|<-------------(lna off)------->|<-------(lna on)-------->|<---(lna off)---->|
+          |                                               |                         |                               |                         |                  |
+  Scan command Received                             Start Scan GPS      End Scan GPS/Start Comput GPS         Start Scan Beidou      End Scan Beidou/Start Comput Beidou
+ *
+ * Autonomous mode
+          |                     |<----- GNSS_SCAN_DOUBLE_CONSTELLATION_INTERVAL --------->|                                            |
+          |<-- TCXCO_STARTUP -->|<-- RADIO_ACQUISITION -->|<-- PROCESSING -->|<-- IDLE -->|<-- RADIO_ACQUISITION -->|<-- PROCESSING -->|
+          |<-------(lna off)--->|<-------(lna on)-------->|<-------------(lna off)------->|<-------(lna on)-------->|<---(lna off)---->|
+          |                     |                         |                               |                         |                  |
+  Scan command Received   Start Scan GPS      End Scan GPS/Start Comput GPS         Start Scan Beidou      End Scan Beidou/Start Comput Beidou
+ *
+ * For the very first scan after a reset of the modem, an additional "CALIBRATION" step is added before the first "RADIO_ACQUISITION".
+ * The LNA must be on during the "CALIBRATION" step, which lasts 5ms plus the TCXO startup time.
+ * Note that the "CALIBRATION" steps only occurs on the first scan after reset (even in case of double constellation scan), and not for other scans.
+ */
 
 /*
  * -----------------------------------------------------------------------------
@@ -63,22 +85,32 @@
  */
 
 /*!
- * \brief GNSS global parameters
+ * @brief GNSS state \ref gnss_state_t
  */
-gnss_t gnss;
+static gnss_state_t gnss_state;
 
 /*!
- * \brief GNSS scan type parameter
+ * @brief Buffer scan result buffer
+ */
+static uint8_t gnss_scan_result_buffer[GNSS_BUFFER_MAX_SIZE];
+
+/*!
+ * @brief Buffer scan result buffer size
+ */
+static uint16_t gnss_scan_result_buffer_size;
+
+/*!
+ * @brief GNSS scan type parameter
  */
 static uint8_t scan_type = ASSISTED_MODE;
 
 /*!
- * \brief GNSS scan timeout flag
+ * @brief GNSS scan timeout flag
  */
 static bool gnss_scan_timeout = false;
 
 /*!
- * \brief Timer to handle the scan timeout
+ * @brief Timer to handle the scan timeout
  */
 static timer_event_t gnss_scan_timeout_timer;
 
@@ -88,18 +120,49 @@ static timer_event_t gnss_scan_timeout_timer;
  */
 
 /*!
- * \brief configure by default the gnss scanner
+ * @brief Analyze the received NAV message and determine if it's a valid one
  *
- * \param [in] context Radio abstraction
- *
- * \param [in] settings gnss settings to apply \ref gnss_settings_t
+ * @param [in] settings Gnss settings used \ref gnss_settings_t
+ * @param [in] capture_result Structure containing the capture result
+ * @param [out] is_valid_nav_message If true, the NAV message is valid if false, it's not valid
+ * @param [out] average_cn Average CN of the detected satellites
  */
-static void gnss_scan_configure( const void* context, gnss_settings_t settings );
+static void gnss_analyse_nav_message( const gnss_settings_t* settings, const gnss_scan_single_result_t* capture_result,
+                                      bool* is_valid_nav_message, uint8_t* average_cn );
 
 /*!
- * \brief Function executed on gnss scan timeout event
+ * @brief configure by default the gnss scanner
  *
- * \param [in] context Radio abstraction
+ * @param [in] context Radio abstraction
+ * @param [in] settings gnss settings to apply \ref gnss_settings_t
+ */
+static void gnss_scan_configure( const void* context, const gnss_settings_t* settings );
+
+/*!
+ * @brief Choose scan mode between assisted and autonomous
+ *
+ * @param [in] type between
+    ASSISTED_MODE or AUTONOMOUS_MODE
+ */
+static void gnss_scan_set_type( uint8_t type );
+/*!
+ * @brief init the gnss state machine
+ *
+ * @param [in] context Radio abstraction
+ * @param [in] settings GNSS settings to apply \ref gnss_settings_t
+ */
+static void gnss_scan_init( const void* context, const gnss_settings_t* settings );
+
+/*!
+ * @brief Check if the setting mask indicates a single constellation GNSS scan
+ *
+ * @param [in] settings GNSS settings used \ref gnss_settings_t
+ */
+static bool is_single_constellation_setting( const gnss_settings_t* settings );
+/*!
+ * @brief Function executed on gnss scan timeout event
+ *
+ * @param [in] context Radio abstraction
  */
 static void on_gnss_scan_timeout_event( void* context );
 
@@ -110,10 +173,40 @@ static void on_gnss_scan_timeout_event( void* context );
 
 void lr1110_modem_gnss_scan_done( uint8_t* buffer, uint16_t size )
 {
-    memcpy( gnss.capture_result.result_buffer, buffer, size );
-    gnss.capture_result.result_size = size;
+    lr1110_modem_gnss_destination_t     destination;
+    lr1110_modem_gnss_scan_done_event_t event_type;
 
-    gnss.state = GNSS_GET_RESULTS;
+    lr1110_modem_helper_gnss_get_result_destination( buffer, size, &destination );
+
+    if( destination == LR1110_MODEM_GNSS_DESTINATION_HOST )
+    {
+        lr1110_modem_helper_gnss_get_event_type( buffer, size, &event_type );
+
+        switch( event_type )
+        {
+        case LR1110_MODEM_GNSS_SCAN_DONE_ALMANAC_UPDATE_FAILS_CRC_ERROR:
+        case LR1110_MODEM_GNSS_SCAN_DONE_ALMANAC_UPDATE_FAILS_FLASH_INTEGRITY_ERROR:
+        case LR1110_MODEM_GNSS_SCAN_DONE_ALMANAC_VERSION_NOT_SUPPORTED:
+        case LR1110_MODEM_GNSS_SCAN_DONE_IQ_FAILS:
+        case LR1110_MODEM_GNSS_SCAN_DONE_NO_TIME:
+        case LR1110_MODEM_GNSS_SCAN_DONE_NO_SATELLITE_DETECTED:
+        case LR1110_MODEM_GNSS_SCAN_DONE_GLOBAL_ALMANAC_CRC_ERROR:
+        case LR1110_MODEM_GNSS_SCAN_DONE_ALMANAC_TOO_OLD:
+        default:
+        {
+            memcpy( gnss_scan_result_buffer, buffer, size );
+            gnss_scan_result_buffer_size = size;
+            gnss_state                   = GNSS_GET_RESULTS;
+        }
+        break;
+        }
+    }
+    else if( destination == LR1110_MODEM_GNSS_DESTINATION_SOLVER )
+    {
+        memcpy( gnss_scan_result_buffer, buffer, size );
+        gnss_scan_result_buffer_size = size;
+        gnss_state                   = GNSS_GET_RESULTS;
+    }
 }
 
 void gnss_scan_set_type( uint8_t type )
@@ -128,10 +221,10 @@ void gnss_scan_set_type( uint8_t type )
     }
 }
 
-void gnss_scan_init( const void* context, gnss_settings_t settings )
+void gnss_scan_init( const void* context, const gnss_settings_t* settings )
 {
-    gnss.state                      = GNSS_START_SCAN;
-    gnss.capture_result.result_size = 0;
+    gnss_state                   = GNSS_START_SCAN;
+    gnss_scan_result_buffer_size = 0;
 
     timer_init( &gnss_scan_timeout_timer, on_gnss_scan_timeout_event );
     timer_set_value( &gnss_scan_timeout_timer, GNSS_SCAN_TIMEOUT );
@@ -139,44 +232,53 @@ void gnss_scan_init( const void* context, gnss_settings_t settings )
     gnss_scan_configure( context, settings );
 }
 
-gnss_scan_result_t gnss_scan_execute( const void* context )
+gnss_scan_result_t gnss_scan_execute( const void* context, const gnss_settings_t* settings,
+                                      gnss_scan_single_result_t* capture_result )
 {
-    bool                         gnss_scan_done = false;
+    bool                         gnss_scan_done      = false;
     lr1110_modem_response_code_t modem_response_code = LR1110_MODEM_RESPONSE_CODE_OK;
-    uint8_t                      nb_detected_satellites = 0;
-    gnss_scan_result_t           scan_result            = GNSS_SCAN_SUCCESS;
+    gnss_scan_result_t           scan_result         = GNSS_SCAN_SUCCESS;
 
-    gnss_scan_timeout = false;
+    /* Reset parameters */
+    gnss_scan_timeout                    = false;
+    capture_result->is_valid_nav_message = false;
 
+    /* Init the GNSS parameters */
+    gnss_scan_init( context, settings );
+
+    /* Start the timeout timer */
     timer_start( &gnss_scan_timeout_timer );
 
     while( ( gnss_scan_done != true ) && ( gnss_scan_timeout != true ) )
     {
-        // Process Event
+        /* Process Event */
         if( ( ( lr1110_t* ) context )->event.callback != NULL )
         {
             lr1110_modem_event_process( context );
         }
 
-        switch( gnss.state )
+        switch( gnss_state )
         {
         case GNSS_START_SCAN:
+
+            /* Turn on the scan led during the scan */
+            leds_on( LED_SCAN_MASK );
 
             /* Switch on the LNA */
             lr1110_modem_board_lna_on( );
 
             if( scan_type == AUTONOMOUS_MODE )
             {
-                modem_response_code = lr1110_modem_gnss_scan_autonomous_md( context, gnss.settings.search_mode,
-                                                        gnss.settings.input_paramaters, gnss.settings.nb_sat );
+                modem_response_code = lr1110_modem_gnss_scan_autonomous(
+                    context, settings->search_mode, LR1110_MODEM_GNSS_PSEUDO_RANGE_MASK, settings->nb_sat );
             }
             else
             {
-                modem_response_code = lr1110_modem_gnss_scan_assisted_md(
-                    context, gnss.settings.search_mode, gnss.settings.input_paramaters, gnss.settings.nb_sat );
+                modem_response_code = lr1110_modem_gnss_scan_assisted(
+                    context, settings->search_mode, LR1110_MODEM_GNSS_PSEUDO_RANGE_MASK, settings->nb_sat );
             }
 
-            // If response code different than RESPONSE_CODE_OK leave
+            /* If response code different than RESPONSE_CODE_OK leave */
             if( modem_response_code == LR1110_MODEM_RESPONSE_CODE_NO_TIME )
             {
                 gnss_scan_done = true;
@@ -188,27 +290,36 @@ gnss_scan_result_t gnss_scan_execute( const void* context )
                 scan_result    = GNSS_SCAN_FAIL;
             }
 
-            gnss.state = GNSS_LOW_POWER;
+            gnss_state = GNSS_LOW_POWER;
             break;
 
         case GNSS_GET_RESULTS:
 
-            modem_response_code = lr1110_modem_gnss_get_nb_detected_satellites( context, &nb_detected_satellites );
-            gnss.capture_result.nb_detected_satellites = nb_detected_satellites;
-            modem_response_code = lr1110_modem_gnss_get_detected_satellites( context, nb_detected_satellites,
-                                                                             gnss.capture_result.detected_satellites );
+            /* Store the NAV message */
+            memcpy( capture_result->nav_message, gnss_scan_result_buffer, gnss_scan_result_buffer_size );
+            capture_result->nav_message_size = gnss_scan_result_buffer_size;
 
-            gnss.state = GNSS_TERMINATED;
+            modem_response_code =
+                lr1110_modem_gnss_get_nb_detected_satellites( context, &capture_result->nb_detected_satellites );
+            modem_response_code = lr1110_modem_gnss_get_detected_satellites(
+                context, capture_result->nb_detected_satellites, capture_result->detected_satellites );
+            lr1110_modem_gnss_get_timings( context, &capture_result->timings );
+
+            /* Analyze the received NAV message */
+            gnss_analyse_nav_message( settings, capture_result, &capture_result->is_valid_nav_message,
+                                      &capture_result->average_cn );
+
+            gnss_state = GNSS_TERMINATED;
 
             break;
 
         case GNSS_TERMINATED:
-            gnss.state     = GNSS_START_SCAN;
+            gnss_state     = GNSS_START_SCAN;
             gnss_scan_done = true;
             break;
 
         case GNSS_LOW_POWER:
-            // The MCU wakes up through events
+            /* The MCU wakes up through events */
             hal_mcu_low_power_handler( );
             break;
         }
@@ -216,6 +327,9 @@ gnss_scan_result_t gnss_scan_execute( const void* context )
 
     /* Switch off the LNA */
     lr1110_modem_board_lna_off( );
+
+    /* Turn off the scan led at the end of the scan */
+    leds_off( LED_SCAN_MASK );
 
     timer_stop( &gnss_scan_timeout_timer );
 
@@ -227,32 +341,80 @@ gnss_scan_result_t gnss_scan_execute( const void* context )
     return scan_result;
 }
 
-void gnss_scan_display_results( void )
+void gnss_scan_display_results( const gnss_scan_single_result_t* capture_result )
 {
     uint8_t i = 0;
 
     /* Satellites infos */
 
-    HAL_DBG_TRACE_PRINTF( "Nb Detected satellites : %d \r\n", gnss.capture_result.nb_detected_satellites );
+    HAL_DBG_TRACE_PRINTF( "Nb Detected satellites : %d \r\n", capture_result->nb_detected_satellites );
 
-    HAL_DBG_TRACE_MSG( "Satellites infos : \r\n" );
-
-    for( i = 0; i < gnss.capture_result.nb_detected_satellites; i++ )
+    if( capture_result->nb_detected_satellites > 0 )
     {
-        HAL_DBG_TRACE_PRINTF( "ID = %d -- CN = %d \r\n", gnss.capture_result.detected_satellites[i].satellite_id,
-                              gnss.capture_result.detected_satellites[i].cnr );
+        HAL_DBG_TRACE_MSG( "Satellites infos : \r\n" );
+
+        for( i = 0; i < capture_result->nb_detected_satellites; i++ )
+        {
+            HAL_DBG_TRACE_PRINTF( "ID = %d -- CN = %d \r\n", capture_result->detected_satellites[i].satellite_id,
+                                  capture_result->detected_satellites[i].cnr );
+        }
     }
 
-    /*  NAV Message */
+    /* Scan Timings */
+    HAL_DBG_TRACE_PRINTF( "Scan timing radio_ms : %d\r\n", capture_result->timings.radio_ms );
+    HAL_DBG_TRACE_PRINTF( "Scan timing computation_ms : %d\r\n", capture_result->timings.computation_ms );
+
+    /* NAV Message */
 
     HAL_DBG_TRACE_MSG( "NAV = " );
 
-    for( i = 0; i < gnss.capture_result.result_size; i++ )
+    for( i = 0; i < capture_result->nav_message_size; i++ )
     {
-        HAL_DBG_TRACE_PRINTF( "%02X", gnss.capture_result.result_buffer[i] );
+        HAL_DBG_TRACE_PRINTF( "%02X", capture_result->nav_message[i] );
     }
 
-    HAL_DBG_TRACE_MSG( "\r\n\r\n" );
+    HAL_DBG_TRACE_PRINTF( "\r\nIs NAV message valid : %d\r\n", capture_result->is_valid_nav_message );
+
+    if( capture_result->is_valid_nav_message == true )
+    {
+        /* Average CN */
+        HAL_DBG_TRACE_PRINTF( "Average CN : %d\r\n", capture_result->average_cn );
+    }
+
+    HAL_DBG_TRACE_MSG( "\r\n" );
+}
+
+void gnss_scan_determine_best_nav_message( gnss_scan_single_result_t* pcb_capture_result,
+                                           gnss_scan_single_result_t* patch_capture_result )
+{
+    if( ( pcb_capture_result->is_valid_nav_message == true ) && ( patch_capture_result->is_valid_nav_message == true ) )
+    {
+        float pcb_nb_sv   = pcb_capture_result->nb_detected_satellites;
+        float patch_nb_sv = patch_capture_result->nb_detected_satellites;
+
+        if( fabs( pcb_nb_sv - patch_nb_sv ) > 1 )
+        {
+            if( pcb_capture_result->nb_detected_satellites > patch_capture_result->nb_detected_satellites )
+            {
+                patch_capture_result->is_valid_nav_message = false;
+            }
+            else
+            {
+                pcb_capture_result->is_valid_nav_message = false;
+            }
+        }
+        else
+        {
+            if( pcb_capture_result->average_cn > patch_capture_result->average_cn )
+            {
+                patch_capture_result->is_valid_nav_message = false;
+            }
+            else
+            {
+                pcb_capture_result->is_valid_nav_message = false;
+            }
+        }
+    }
 }
 
 /*
@@ -262,16 +424,85 @@ void gnss_scan_display_results( void )
 
 static void on_gnss_scan_timeout_event( void* context ) { gnss_scan_timeout = true; }
 
-static void gnss_scan_configure( const void* context, gnss_settings_t settings )
+static void gnss_scan_configure( const void* context, const gnss_settings_t* settings )
 {
-    gnss.settings.search_mode = settings.search_mode;
-    gnss.settings.input_paramaters =
-        LR1110_MODEM_GNSS_BIT_CHANGE_MASK | LR1110_MODEM_GNSS_DOPPLER_MASK | LR1110_MODEM_GNSS_PSEUDO_RANGE_MASK;
-    lr1110_modem_gnss_set_constellations_to_use( context, settings.constellation_to_use );
-    gnss.settings.nb_sat = 0;
+    lr1110_modem_gnss_set_constellations_to_use( context, settings->constellation_to_use );
+    gnss_scan_set_type( settings->scan_type );
+}
 
-    gnss_scan_set_type( settings.scan_type );
+static bool is_single_constellation_setting( const gnss_settings_t* settings )
+{
+    return settings->constellation_to_use != ( LR1110_MODEM_GNSS_GPS_MASK | LR1110_MODEM_GNSS_BEIDOU_MASK );
+}
+
+static void gnss_analyse_nav_message( const gnss_settings_t* settings, const gnss_scan_single_result_t* capture_result,
+                                      bool* is_valid_nav_message, uint8_t* average_cn )
+{
+    uint16_t average_cn_tmp = 0;
+
+    /* Analyse the NAV message:
+    Check the validity which is defined by having :
+    at least 2 sv per constellation (BEIDOU and GNSS only) and 6 detected satellites in the case of double
+    constellation. if there are 5 sv in a same constellation in case of double constellation the NAV message is valid
+    5 detected satellites (BEIDOU and GNSS only) in the case of single constellation.
+    GPS satellites ID [0 31], SBAS satellites ID [32 63] but not used, BEIDOU satellites ID [64 128].
+    Calcul the average CN.
+    */
+    if( capture_result->nb_detected_satellites >= 5 )
+    {
+        uint8_t gps_sv_cnt    = 0;
+        uint8_t beidou_sv_cnt = 0;
+
+        for( uint8_t i = 0; i < capture_result->nb_detected_satellites; i++ )
+        {
+            average_cn_tmp += capture_result->detected_satellites[i].cnr;
+
+            /* Remove the SBAS from the count */
+            /* Check if it's a GPS satellite */
+            if( capture_result->detected_satellites[i].satellite_id <= 31 )
+            {
+                gps_sv_cnt++;
+            }
+            /* Check if it's a BEIDOU satellite */
+            if( ( capture_result->detected_satellites[i].satellite_id >= 64 ) &&
+                ( capture_result->detected_satellites[i].satellite_id <= 128 ) )
+            {
+                beidou_sv_cnt++;
+            }
+        }
+
+        /* Calcul the average CN */
+        *average_cn = average_cn_tmp / capture_result->nb_detected_satellites;
+
+        /* Check if the NAV message is valid */
+        if( ( is_single_constellation_setting( settings ) == true ) )
+        {
+            if( ( gps_sv_cnt >= 5 ) || ( beidou_sv_cnt >= 5 ) )
+            {
+                *is_valid_nav_message = true;
+            }
+            else
+            {
+                *is_valid_nav_message = false;
+            }
+        }
+        else
+        {
+            if( ( ( gps_sv_cnt >= 2 ) && ( beidou_sv_cnt >= 2 ) && ( ( gps_sv_cnt + beidou_sv_cnt ) >= 6 ) ) ||
+                ( ( ( gps_sv_cnt >= 5 ) || ( beidou_sv_cnt >= 5 ) ) && ( ( gps_sv_cnt + beidou_sv_cnt ) >= 5 ) ) )
+            {
+                *is_valid_nav_message = true;
+            }
+            else
+            {
+                *is_valid_nav_message = false;
+            }
+        }
+    }
+    else
+    {
+        *is_valid_nav_message = false;
+    }
 }
 
 /* --- EOF ------------------------------------------------------------------ */
-

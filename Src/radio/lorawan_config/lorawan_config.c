@@ -1,7 +1,7 @@
 /*!
- * @file      main_test_tx_continuous.c
+ * @file      lorawan_config.c
  *
- * @brief     TX continuous test implementation
+ * @brief     LoRaWAN configuration implementation
  *
  * Revised BSD License
  * Copyright Semtech Corporation 2020. All rights reserved.
@@ -33,9 +33,10 @@
  * -----------------------------------------------------------------------------
  * --- DEPENDENCIES ------------------------------------------------------------
  */
-
 #include "lorawan_config.h"
 #include "lr1110_modem_board.h"
+#include "utilities.h"
+#include "lorawan_commissioning.h"
 
 /*
  * -----------------------------------------------------------------------------
@@ -46,21 +47,6 @@
  * -----------------------------------------------------------------------------
  * --- PRIVATE CONSTANTS -------------------------------------------------------
  */
-
-/*!
- * @brief TX continuous modulated
- */
-#define TX_MODULATED true
-
-/*!
- * @brief Frequency used during test
- */
-#define FREQUENCY 868100000
-
-/*!
- * @brief Tx Power used during test
- */
-#define TX_POWER_USED 14
 
 /*
  * -----------------------------------------------------------------------------
@@ -82,84 +68,84 @@ extern lr1110_t lr1110;
  * --- PRIVATE FUNCTIONS DECLARATION -------------------------------------------
  */
 
-/*!
- * @brief Reset event callback
- *
- * @param [in] reset_count reset counter from the modem
- */
-static void lr1110_modem_reset_event( uint16_t reset_count );
-
 /*
  * -----------------------------------------------------------------------------
  * --- PUBLIC FUNCTIONS DEFINITION ---------------------------------------------
  */
-
-/**
- * @brief Main application entry point.
- */
-int main( void )
-{
-    lr1110_modem_event_t         lr1110_modem_event;
-    lr1110_modem_version_t       modem;
-    lr1110_modem_response_code_t modem_response_code = LR1110_MODEM_RESPONSE_CODE_OK;
-
-    /* Init board */
-    hal_mcu_init( );
-
-    hal_mcu_init_periph( );
-
-    /* Init LR1110 modem event */
-    lr1110_modem_event.reset = lr1110_modem_reset_event;
-    lr1110_modem_board_init( &lr1110, &lr1110_modem_event );
-
-    HAL_DBG_TRACE_MSG( "\r\n\r\n" );
-    HAL_DBG_TRACE_INFO( "###### ===== LR1110 Modem TX continuous demo application ==== ######\r\n\r\n" );
-
-    /* LR1110 modem version */
-    lr1110_modem_get_version( &lr1110, &modem );
-    HAL_DBG_TRACE_PRINTF( "LORAWAN     : %#04X\r\n", modem.lorawan );
-    HAL_DBG_TRACE_PRINTF( "FIRMWARE    : %#02X\r\n", modem.firmware );
-    HAL_DBG_TRACE_PRINTF( "BOOTLOADER  : %#02X\r\n\r\n", modem.bootloader );
-
-    modem_response_code = lr1110_modem_set_region( &lr1110, LORAWAN_REGION_USED );
-
-    lr1110_modem_set_tx_power_offset( &lr1110, 0 );
-
-    modem_response_code = lr1110_modem_test_mode_start( &lr1110 );
-
-    HAL_DBG_TRACE_PRINTF( "FREQ         : %d MHz\r\n", FREQUENCY );
-    HAL_DBG_TRACE_PRINTF( "TX           : %d dBm\r\n", TX_POWER_USED );
-    HAL_DBG_TRACE_PRINTF( "MODULATION   : %d\r\n", TX_MODULATED );
-
-#if( TX_MODULATED )
-    modem_response_code = lr1110_modem_test_tx_cont( &lr1110, FREQUENCY, TX_POWER_USED, LR1110_MODEM_TST_MODE_SF12,
-                                                     LR1110_MODEM_TST_MODE_125_KHZ, LR1110_MODEM_TST_MODE_4_5, 51 );
-#else
-    modem_response_code = lr1110_modem_test_tx_cw( &lr1110, FREQUENCY, TX_POWER_USED );
-#endif
-
-    while( 1 )
-    {
-        lr1110_modem_event_process( &lr1110 );
-    }
-}
 
 /*
  * -----------------------------------------------------------------------------
  * --- PRIVATE FUNCTIONS DEFINITION --------------------------------------------
  */
 
-static void lr1110_modem_reset_event( uint16_t reset_count )
+lr1110_modem_response_code_t lorawan_init( lr1110_modem_regions_t region, lr1110_modem_classes_t lorawan_class )
 {
-    HAL_DBG_TRACE_INFO( "###### ===== LR1110 MODEM RESET %lu ==== ######\r\n\r\n", reset_count );
+    lr1110_modem_dm_info_fields_t dm_info_fields;
+    lr1110_modem_response_code_t  modem_response_code = LR1110_MODEM_RESPONSE_CODE_OK;
 
-    if( lr1110_modem_board_is_ready( ) == true )
+    modem_response_code |= lr1110_modem_set_class( &lr1110, lorawan_class );
+
+    if( lorawan_class == LR1110_LORAWAN_CLASS_A )
     {
-        /* System reset */
-        hal_mcu_reset( );
+        HAL_DBG_TRACE_MSG( "CLASS       : A\r\n" );
     }
-    else
+    if( lorawan_class == LR1110_LORAWAN_CLASS_C )
     {
-        lr1110_modem_board_set_ready( true );
+        HAL_DBG_TRACE_MSG( "CLASS       : C\r\n" );
     }
+
+    modem_response_code |= lr1110_modem_set_region( &lr1110, region );
+    if( region == LR1110_LORAWAN_REGION_EU868 )
+    {
+        HAL_DBG_TRACE_MSG( "REGION      : EU868\r\n\r\n" );
+        modem_response_code |= lr1110_modem_activate_duty_cycle( &lr1110, LORAWAN_DUTYCYCLE_ON );
+    }
+    if( region == LR1110_LORAWAN_REGION_US915 )
+    {
+        HAL_DBG_TRACE_MSG( "REGION      : US915\r\n\r\n" );
+    }
+    if( region == LR1110_LORAWAN_REGION_AS923_GRP1 )
+    {
+        HAL_DBG_TRACE_MSG( "REGION      : AS923_GRP1\r\n\r\n" );
+    }
+    if( region == LR1110_LORAWAN_REGION_CN470 )
+    {
+        HAL_DBG_TRACE_MSG( "REGION      : CN470\r\n\r\n" );
+    }
+    if( region == LR1110_LORAWAN_REGION_AS923_GRP2 )
+    {
+        HAL_DBG_TRACE_MSG( "REGION      : AS923_GRP2\r\n\r\n" );
+    }
+    if( region == LR1110_LORAWAN_REGION_AS923_GRP3 )
+    {
+        HAL_DBG_TRACE_MSG( "REGION      : AS923_GRP3\r\n\r\n" );
+    }
+    if( region == LR1110_LORAWAN_REGION_IN865 )
+    {
+        HAL_DBG_TRACE_MSG( "REGION      : IN865\r\n\r\n" );
+    }
+    if( region == LR1110_LORAWAN_REGION_KR920 )
+    {
+        HAL_DBG_TRACE_MSG( "REGION      : KR920\r\n\r\n" );
+    }
+    if( region == LR1110_LORAWAN_REGION_RU864 )
+    {
+        HAL_DBG_TRACE_MSG( "REGION      : RU864\r\n\r\n" );
+    }
+
+    /* Set DM info field */
+    dm_info_fields.dm_info_field[0] = LR1110_MODEM_DM_INFO_TYPE_CHARGE;
+    dm_info_fields.dm_info_field[1] = LR1110_MODEM_DM_INFO_TYPE_GNSS_ALMANAC_STATUS;
+    dm_info_fields.dm_info_field[2] = LR1110_MODEM_DM_INFO_TYPE_TEMPERATURE;
+    dm_info_fields.dm_info_length   = 3;
+
+    modem_response_code |= lr1110_modem_set_dm_info_field( &lr1110, &dm_info_fields );
+
+    modem_response_code |= lr1110_modem_set_dm_info_interval( &lr1110, LR1110_MODEM_REPORTING_INTERVAL_IN_DAY, 1 );
+
+    modem_response_code |= lr1110_modem_set_alc_sync_mode( &lr1110, LR1110_MODEM_ALC_SYNC_MODE_ENABLE );
+
+    return modem_response_code;
 }
+
+/* --- EOF ------------------------------------------------------------------ */

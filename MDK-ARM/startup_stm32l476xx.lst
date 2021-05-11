@@ -47,22 +47,22 @@ ARM Macro Assembler    Page 1
    28 00000000         ;   <o> Stack Size (in Bytes) <0x0-0xFFFFFFFF:8>
    29 00000000         ; </h>
    30 00000000         
-   31 00000000 00000800 
+   31 00000000 00001000 
                        Stack_Size
-                               EQU              0x800
+                               EQU              0x1000
    32 00000000         
    33 00000000                 AREA             STACK, NOINIT, READWRITE, ALIGN
 =3
    34 00000000         Stack_Mem
                                SPACE            Stack_Size
-   35 00000800         __initial_sp
-   36 00000800         
-   37 00000800         
-   38 00000800         ; <h> Heap Configuration
-   39 00000800         ;   <o>  Heap Size (in Bytes) <0x0-0xFFFFFFFF:8>
-   40 00000800         ; </h>
-   41 00000800         
-   42 00000800 00000400 
+   35 00001000         __initial_sp
+   36 00001000         
+   37 00001000         
+   38 00001000         ; <h> Heap Configuration
+   39 00001000         ;   <o>  Heap Size (in Bytes) <0x0-0xFFFFFFFF:8>
+   40 00001000         ; </h>
+   41 00001000         
+   42 00001000 00000400 
 
 
 
@@ -71,8 +71,8 @@ ARM Macro Assembler    Page 2
 
                        Heap_Size
                                EQU              0x400
-   43 00000800         
-   44 00000800                 AREA             HEAP, NOINIT, READWRITE, ALIGN=
+   43 00001000         
+   44 00001000                 AREA             HEAP, NOINIT, READWRITE, ALIGN=
 3
    45 00000000         __heap_base
    46 00000000         Heap_Mem
@@ -682,7 +682,7 @@ ARM Macro Assembler    Page 11
 Command Line: --debug --xref --diag_suppress=9931 --cpu=Cortex-M4.fp.sp --apcs=
 interwork --depend=lr1110_modem_application_examples\startup_stm32l476xx.d -olr
 1110_modem_application_examples\startup_stm32l476xx.o -I.\RTE\_lr1110_modem_LoR
-aWAN_US915 -IC:\Users\bboulet\AppData\Local\Arm\Packs\ARM\CMSIS\5.7.0\CMSIS\Cor
+aWAN_EU868 -IC:\Users\bboulet\AppData\Local\Arm\Packs\ARM\CMSIS\5.7.0\CMSIS\Cor
 e\Include -IC:\Users\bboulet\AppData\Local\Arm\Packs\Keil\STM32L4xx_DFP\2.2.0\D
 rivers\CMSIS\Device\ST\STM32L4xx\Include --predefine="__MICROLIB SETA 1" --pred
 efine="__UVISION_VERSION SETA 529" --predefine="_RTE_ SETA 1" --predefine="STM3
@@ -709,7 +709,7 @@ Symbol: Stack_Mem
    Uses
       None
 Comment: Stack_Mem unused
-__initial_sp 00000800
+__initial_sp 00001000
 
 Symbol: __initial_sp
    Definitions
@@ -1731,7 +1731,7 @@ Symbol: Heap_Size
    Uses
       At line 46 in file startup_stm32l476xx.s
 Comment: Heap_Size used once
-Stack_Size 00000800
+Stack_Size 00001000
 
 Symbol: Stack_Size
    Definitions
