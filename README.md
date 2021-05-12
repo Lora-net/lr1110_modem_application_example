@@ -33,6 +33,7 @@ To build the host softwares, proceed as follow:
 	- Install arm-none-eabi-gcc : https://developer.arm.com/tools-and-software/open-source-software/developer-tools/gnu-toolchain/gnu-rm/downloads
 	- Make -j
 	- lr1110_modem_application_example.bin is created in the gcc/build folder
+- To update the Modem-E to the latest firmware version please use the updater tool project : https://github.com/Lora-net/lr1110_updater_tool/wiki
 
 ## 4. Changelog
 
