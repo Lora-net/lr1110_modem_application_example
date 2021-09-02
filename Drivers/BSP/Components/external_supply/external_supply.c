@@ -33,7 +33,7 @@
  * -----------------------------------------------------------------------------
  * --- DEPENDENCIES ------------------------------------------------------------
  */
- 
+
 #include "smtc_hal.h"
 
 /*
@@ -66,32 +66,25 @@
  * --- PUBLIC FUNCTIONS DEFINITION ---------------------------------------------
  */
 
-void external_supply_init( uint8_t vcc_mask ){
-    
-    if( vcc_mask & LNA_SUPPLY_MASK)
+void external_supply_init( uint8_t vcc_mask )
+{
+    if( vcc_mask & LNA_SUPPLY_MASK )
     {
         hal_gpio_init_out( LNA_PON, 0 );
     }
 }
 
-
-void external_supply_deinit( uint8_t vcc_mask ){
-
-    if( vcc_mask & LNA_SUPPLY_MASK)
+void external_supply_deinit( uint8_t vcc_mask )
+{
+    if( vcc_mask & LNA_SUPPLY_MASK )
     {
-        hal_gpio_deinit(LNA_PON);
+        hal_gpio_deinit( LNA_PON );
     }
 }
 
+void lna_on( void ) { hal_gpio_set_value( LNA_PON, 1 ); }
 
-void lna_on( void ){
-    hal_gpio_set_value(LNA_PON, 1);
-}
-
-
-void lna_off( void ){
-    hal_gpio_set_value(LNA_PON, 0);
-}
+void lna_off( void ) { hal_gpio_set_value( LNA_PON, 0 ); }
 
 /*
  * -----------------------------------------------------------------------------

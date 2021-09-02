@@ -29,8 +29,8 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef __EXTERNAL_SUPPLY_H__
-#define __EXTERNAL_SUPPLY_H__
+#ifndef EXTERNAL_SUPPLY_H
+#define EXTERNAL_SUPPLY_H
 
 #ifdef __cplusplus
 extern "C" {
@@ -93,6 +93,6 @@ void lna_on( void );
  */
 void lna_off( void );
 
-#endif //__EXTERNAL_SUPPLY_H__
+#endif //EXTERNAL_SUPPLY_H
 
 /* --- EOF ------------------------------------------------------------------ */

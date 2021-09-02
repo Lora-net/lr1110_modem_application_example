@@ -117,10 +117,14 @@ static void hal_mcu_system_clock_re_config_after_stop( void );
  */
 static void hal_mcu_gpio_init( void );
 
+/* Uncomment for achieve lower consumption, comment for LED example in class C example */
+//#define HAL_MCU_GPIO_DEINIT
+#ifdef HAL_MCU_GPIO_DEINIT
 /*!
  * @brief deinit the GPIO
  */
 static void hal_mcu_gpio_deinit( void );
+#endif
 
 /*!
  * @brief init the power voltage detector
@@ -181,15 +185,12 @@ void hal_mcu_init_periph( void )
     external_supply_init( LNA_SUPPLY_MASK );
 
     /* LIS2DE12 accelerometer */
-#if( ACCELEROMETER_MOUNTED == 1 )
     accelerometer_init( INT_1 );
-#endif
 }
 
 static void hal_mcu_reinit_periph( void )
 {
-    /* Leds - uncomment for achieve lower consumtion , comment for LED example in class C example */
-    //leds_init( );
+    leds_init( );
 
     /* External supplies */
     external_supply_init( LNA_SUPPLY_MASK );
@@ -197,14 +198,14 @@ static void hal_mcu_reinit_periph( void )
 
 void hal_mcu_deinit_periph( void )
 {
-    /* Leds - uncomment for achieve lower consumtion , comment for LED example in class C example */
-    //leds_deinit( );
+    leds_deinit( );
 
     // Disable external supply
     external_supply_deinit( LNA_SUPPLY_MASK );
     
-    /* uncomment for achieve lower consumtion , comment for LED example in class C example */
-    //hal_mcu_gpio_deinit( );
+#ifdef HAL_MCU_GPIO_DEINIT
+    hal_mcu_gpio_deinit( );
+#endif
 }
 
 void hal_mcu_init( void )
@@ -220,6 +221,9 @@ void hal_mcu_init( void )
 
     /* Initialize low power timer */
     hal_tmr_init( );
+
+    /* Initialize the user flash */
+    flash_init( );
 
     /* Init power voltage voltage detector */
     hal_mcu_pvd_config( );
@@ -239,9 +243,7 @@ void hal_mcu_init( void )
     hal_rtc_init( );
 
     /* Initialize I2C */
-#if( ACCELEROMETER_MOUNTED == 1 )
     hal_i2c_init( HAL_I2C_ID, I2C_SDA, I2C_SCL );
-#endif
 }
 
 void hal_mcu_disable_irq( void ) { __disable_irq( ); }
@@ -260,7 +262,7 @@ void hal_mcu_panic( void )
 {
     CRITICAL_SECTION_BEGIN( );
 
-    HAL_DBG_TRACE_ERROR( "%s\n", __FUNCTION__ );
+    HAL_DBG_TRACE_ERROR( "%s\n", __func__ );
     HAL_DBG_TRACE_ERROR( "PANIC" );
 
     /* reset the board */
@@ -449,7 +451,7 @@ static void hal_mcu_pvd_config( void )
     sConfigPVD.Mode     = PWR_PVD_MODE_IT_RISING;
     if( HAL_PWR_ConfigPVD( &sConfigPVD ) != HAL_OK )
     {
-        assert_param( FAIL );
+        assert_param( SMTC_FAIL );
     }
 
     /* Enable PVD */
@@ -481,6 +483,7 @@ static void hal_mcu_gpio_init( void )
 #endif
 }
 
+#ifdef HAL_MCU_GPIO_DEINIT
 static void hal_mcu_gpio_deinit( void )
 {
     /* Disable GPIOs clock */
@@ -491,6 +494,7 @@ static void hal_mcu_gpio_deinit( void )
     __HAL_RCC_GPIOE_CLK_DISABLE( );
     __HAL_RCC_GPIOH_CLK_DISABLE( );
 }
+#endif
 
 void HAL_MspInit( void )
 {
@@ -583,9 +587,7 @@ static void hal_mcu_deinit( void )
     hal_spi_deinit( HAL_RADIO_SPI_ID );
     lr1110_modem_board_deinit_io( &lr1110 );
     /* Disable I2C */
-#if( ACCELEROMETER_MOUNTED == 1 )
     hal_i2c_deinit( HAL_I2C_ID );
-#endif
     /* Disable UART */
 #if( HAL_USE_PRINTF_UART == HAL_FEATURE_ON )
     hal_uart_deinit( HAL_PRINTF_UART_ID );
@@ -598,9 +600,7 @@ static void hal_mcu_reinit( void )
     hal_mcu_system_clock_re_config_after_stop( );
 
     /* Initialize I2C */
-#if( ACCELEROMETER_MOUNTED == 1 )
     hal_i2c_init( HAL_I2C_ID, I2C_SDA, I2C_SCL );
-#endif
 
     /* Initialize UART */
 #if( HAL_USE_PRINTF_UART == HAL_FEATURE_ON )

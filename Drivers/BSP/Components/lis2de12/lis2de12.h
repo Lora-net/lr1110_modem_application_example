@@ -36,8 +36,8 @@
  */
 
 /* Define to prevent recursive inclusion -------------------------------------*/
-#ifndef LIS2DE12_REGS_H
-#define LIS2DE12_REGS_H
+#ifndef LIS2DE12_H
+#define LIS2DE12_H
 
 #ifdef __cplusplus
   extern "C" {
@@ -717,6 +717,6 @@ int32_t lis2de12_spi_mode_get(lis2de12_sim_t *val);
 }
 #endif
 
-#endif /* LIS2DE12_REGS_H */
+#endif /* LIS2DE12_H */
 
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

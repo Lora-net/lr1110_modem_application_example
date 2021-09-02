@@ -44,6 +44,7 @@ extern "C" {
 #include <stdbool.h>
 #include <stdint.h>
 #include "lr1110_modem_common.h"
+#include "lr1110_modem_lorawan.h"
 #include "lr1110_modem_gnss.h"
 
 /*
@@ -86,6 +87,21 @@ extern "C" {
  */
 #define LR1110_MODEM_HELPER_NB_DAY_PER_WEEK 7
 
+/**
+ * @brief Maximum payload size in byte of a downlink
+ */
+#define LR1110_MODEM_HELPER_MAX_DOWNLINK_LENGTH 242
+
+/*!
+ * @brief Maximum payload size in byte of a nav message
+ */
+#define LR1110_MODEM_HELPER_GNSS_MAX_NAV_LENGTH 255
+
+/*!
+ * @brief Maximum payload size in byte of a Wi-Fi result
+ */
+#define LR1110_MODEM_HELPER_WIFI_MAX_BUFFER_LENGTH 948  // 12 results * LR1110_WIFI_EXTENDED_FULL_RESULT_SIZE
+
 /*
  * -----------------------------------------------------------------------------
  * --- PUBLIC TYPES ------------------------------------------------------------
@@ -99,6 +115,61 @@ typedef enum
     LR1110_MODEM_HELPER_STATUS_OK    = 0,
     LR1110_MODEM_HELPER_STATUS_ERROR = 3,
 } lr1110_modem_helper_status_t;
+
+/**
+ * @brief Structure holding event-related data
+ */
+typedef struct
+{
+    uint8_t event_type;
+    uint8_t missed_events;  //!< Number of event_type events missed before the current one
+    union
+    {
+        struct
+        {
+            uint16_t count;
+        } reset;
+        struct
+        {
+            lr1110_modem_tx_done_event_t status;
+        } txdone;
+        struct
+        {
+            int8_t                        rssi;  //!< Signed value in dBm + 64
+            int8_t                        snr;   //!< Signed value in dB given in 0.25dB step
+            lr1110_modem_down_data_flag_t flag;
+            uint8_t                       fport;
+            uint8_t                       data[LR1110_MODEM_HELPER_MAX_DOWNLINK_LENGTH];
+            uint8_t                       length;
+        } downdata;
+        struct
+        {
+            lr1110_modem_upload_event_t status;
+        } upload;
+        struct
+        {
+            lr1110_modem_event_setconf_tag_t tag;
+        } setconf;
+        struct
+        {
+            lr1110_modem_mute_t status;
+        } mute;
+         struct
+        {
+            uint16_t len;
+            uint8_t buffer[LR1110_MODEM_HELPER_WIFI_MAX_BUFFER_LENGTH];
+        } wifi;
+         struct
+        {
+            uint16_t len;
+            uint8_t nav_message[LR1110_MODEM_HELPER_GNSS_MAX_NAV_LENGTH];
+        } gnss;
+        struct
+        {
+            lr1110_modem_alc_sync_state_t status;
+        } time;
+    } event_data;
+} lr1110_modem_event_t;
 
 /*
  * -----------------------------------------------------------------------------
@@ -170,6 +241,17 @@ lr1110_modem_helper_status_t lr1110_modem_helper_gnss_get_result_destination(
 lr1110_modem_helper_status_t lr1110_modem_helper_gnss_get_event_type( const uint8_t* result_buffer,
                                                                       const uint16_t result_buffer_size,
                                                                       lr1110_modem_gnss_scan_done_event_t* event_type );
+
+/**
+ * @brief Extract the event data contained in the event field buffer
+ *
+ * @param [in] context Chip implementation context
+ * @param [out] modem_event Struct containing the event data \see lr1110_modem_event_t
+ *
+ * @returns  Operation status
+ */
+lr1110_modem_helper_status_t lr1110_modem_helper_get_event_data( const void*           context,
+                                                                 lr1110_modem_event_t* modem_event );
 
 #ifdef __cplusplus
 }

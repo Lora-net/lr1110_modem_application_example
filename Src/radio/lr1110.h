@@ -29,8 +29,8 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef __LR1110_H__
-#define __LR1110_H__
+#ifndef LR1110_H
+#define LR1110_H
 
 #ifdef __cplusplus
 extern "C" {
@@ -69,7 +69,7 @@ extern "C" {
  */
 
 /*!
- * @brief LR1110 modem callback functions
+ * @brief LR1110 modem-e callback functions
  */
 typedef struct
 {
@@ -112,16 +112,15 @@ typedef struct
     /*!
      * @brief  File upload completed callback prototype.
      *
-     * @param [in] session_id
-     * @param [in] session_counter
+     * @param [in] upload status \see lr1110_modem_upload_event_t
      */
-    void ( *upload_done )( uint8_t session_id, uint8_t session_counter );
+    void ( *upload_done )( lr1110_modem_upload_event_t upload_status );
     /*!
      * @brief  Set conf changed by DM callback prototype.
      *
-     * @param [in] info_tag
+     * @param [in] tag \see lr1110_modem_event_setconf_tag_t
      */
-    void ( *set_conf )( uint8_t info_tag );
+    void ( *set_conf )( lr1110_modem_event_setconf_tag_t tag );
     /*!
      * @brief  Mute callback prototype.
      *
@@ -136,7 +135,6 @@ typedef struct
      * @brief  Gnss Done Done callback prototype.
      *
      * @param [in] nav_message
-     *
      * @param [in] size
      */
     void ( *gnss_scan_done )( uint8_t* nav_message, uint16_t size );
@@ -144,7 +142,6 @@ typedef struct
      * @brief  Gnss Done Done callback prototype.
      *
      * @param [in] scan buffer containing the raw data coming from the scan
-     *
      * @param [in] size of the raw buffer
      */
     void ( *wifi_scan_done )( uint8_t* scan, uint16_t size );
@@ -166,7 +163,7 @@ typedef struct
      * @brief  No event exists callback prototype.
      */
     void ( *no_event )( void );
-} lr1110_modem_event_t;
+} lr1110_modem_event_callback_t;
 
 /*!
  * @brief Radio hardware and global parameters
@@ -192,11 +189,11 @@ typedef void ( *lr1110_dio_irq_handler )( void* context );
  */
 
 /*!
- * @brief Init the LR1110 modem event callbacks
+ * @brief Init the LR1110 modem-e event callbacks
  *
- * @param [in] event lr1110 modem event callback \ref lr1110_modem_event_t
+ * @param [in] event lr1110 modem-e event callback \ref lr1110_modem_event_callback_t
  */
-void radio_event_init( lr1110_modem_event_t* event );
+void radio_event_init( lr1110_modem_event_callback_t* event );
 
 /*!
  * @brief Callback when event occurs
@@ -216,6 +213,6 @@ void lr1110_modem_event_process( const void* context );
 }
 #endif
 
-#endif  // __LR1110_H__
+#endif  // LR1110_H
 
 /* --- EOF ------------------------------------------------------------------ */

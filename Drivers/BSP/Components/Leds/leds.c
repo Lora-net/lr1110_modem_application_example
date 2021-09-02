@@ -67,29 +67,31 @@
  * --- PUBLIC FUNCTIONS DEFINITION ---------------------------------------------
  */
 
-void leds_init( void ){
+void leds_init( void )
+{
     hal_gpio_init_out( LED_TX, 0 );
     hal_gpio_init_out( LED_RX, 0 );
     hal_gpio_init_out( LED_SCAN, 0 );
 }
 
-void leds_deinit( void ){
+void leds_deinit( void )
+{
     hal_gpio_deinit( LED_TX );
     hal_gpio_deinit( LED_RX );
     hal_gpio_deinit( LED_SCAN );
 }
 
-void leds_on( uint8_t leds ){
-
+void leds_on( uint8_t leds )
+{
     if( leds & LED_TX_MASK )
     {
         /* LED TX */
-        hal_gpio_set_value(LED_TX, GPIO_PIN_SET );
+        hal_gpio_set_value( LED_TX, GPIO_PIN_SET );
     }
     if( leds & LED_RX_MASK )
     {
         /* LED RX */
-        hal_gpio_set_value(LED_RX, GPIO_PIN_SET );
+        hal_gpio_set_value( LED_RX, GPIO_PIN_SET );
     }
     if( leds & LED_SCAN_MASK )
     {
@@ -98,17 +100,17 @@ void leds_on( uint8_t leds ){
     }
 }
 
-void leds_off( uint8_t leds ){
-
+void leds_off( uint8_t leds )
+{
     if( leds & LED_TX_MASK )
     {
         /* LED TX */
-        hal_gpio_set_value(LED_TX, GPIO_PIN_RESET );
+        hal_gpio_set_value( LED_TX, GPIO_PIN_RESET );
     }
     if( leds & LED_RX_MASK )
     {
         /* LED RX */
-        hal_gpio_set_value(LED_RX, GPIO_PIN_RESET );
+        hal_gpio_set_value( LED_RX, GPIO_PIN_RESET );
     }
     if( leds & LED_SCAN_MASK )
     {
@@ -117,8 +119,8 @@ void leds_off( uint8_t leds ){
     }
 }
 
-void leds_toggle( uint8_t leds ){
-
+void leds_toggle( uint8_t leds )
+{
     if( leds & LED_TX_MASK )
     {
         /* LED TX */

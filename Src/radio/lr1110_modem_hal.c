@@ -63,7 +63,7 @@
  */
 
 /*!
- * @brief LR1110 modem reset timeout flag
+ * @brief LR1110 modem-e reset timeout flag
  */
 static bool lr1110_modem_reset_timeout = false;
 
@@ -88,7 +88,7 @@ static timer_event_t lr1110_modem_reset_timeout_timer;
 static lr1110_hal_status_t lr1110_hal_wait_on_busy( const void* context, uint32_t timeout_ms );
 
 /*!
- * @brief Function to wait that the lr1110 modem busy line fall to low
+ * @brief Function to wait that the lr1110 modem-e busy line fall to low
  *
  * @param [in] context Chip implementation context
  * @param [in] timeout_ms timeout in millisec before leave the function
@@ -98,7 +98,7 @@ static lr1110_hal_status_t lr1110_hal_wait_on_busy( const void* context, uint32_
 static lr1110_modem_hal_status_t lr1110_modem_hal_wait_on_busy( const void* context, uint32_t timeout_ms );
 
 /*!
- * @brief Function to wait the that lr1110 modem busy line raise to high
+ * @brief Function to wait the that lr1110 modem-e busy line raise to high
  *
  * @param [in] context Chip implementation context
  * @param [in] timeout_ms timeout in millisec before leave the function
@@ -108,7 +108,7 @@ static lr1110_modem_hal_status_t lr1110_modem_hal_wait_on_busy( const void* cont
 static lr1110_modem_hal_status_t lr1110_modem_hal_wait_on_unbusy( const void* context, uint32_t timeout_ms );
 
 /*!
- * @brief Function executed on lr1110 modem reset timeout event
+ * @brief Function executed on lr1110 modem-e reset timeout event
  */
 static void on_lr1110_modem_reset_timeout_event( void* context );
 
@@ -378,7 +378,7 @@ lr1110_modem_hal_status_t lr1110_modem_hal_wakeup( const void* context )
 lr1110_hal_status_t lr1110_hal_write( const void* context, const uint8_t* command, const uint16_t command_length,
                                       const uint8_t* data, const uint16_t data_length )
 {
-    if( lr1110_hal_wakeup( context ) == LR1110_MODEM_HAL_STATUS_OK )
+    if( lr1110_hal_wakeup( context ) == LR1110_HAL_STATUS_OK )
     {
         hal_gpio_set_value( ( ( lr1110_t* ) context )->nss.pin, 0 );
         for( uint16_t i = 0; i < command_length; i++ )
@@ -399,7 +399,7 @@ lr1110_hal_status_t lr1110_hal_write( const void* context, const uint8_t* comman
 lr1110_hal_status_t lr1110_hal_read( const void* context, const uint8_t* command, const uint16_t command_length,
                                      uint8_t* data, const uint16_t data_length )
 {
-    if( lr1110_hal_wakeup( context ) == LR1110_MODEM_HAL_STATUS_OK )
+    if( lr1110_hal_wakeup( context ) == LR1110_HAL_STATUS_OK )
     {
         hal_gpio_set_value( ( ( lr1110_t* ) context )->nss.pin, 0 );
 

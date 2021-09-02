@@ -61,7 +61,7 @@ static hal_i2c_t hal_i2c[] = {
     [0] =
         {
             .interface = I2C1,
-            .handle    = NULL,
+            .handle    = { NULL },
             .pins =
                 {
                     .sda = NC,
@@ -71,7 +71,7 @@ static hal_i2c_t hal_i2c[] = {
     [1] =
         {
             .interface = I2C2,
-            .handle    = NULL,
+            .handle    = { NULL },
             .pins =
                 {
                     .sda = NC,
@@ -81,7 +81,7 @@ static hal_i2c_t hal_i2c[] = {
     [2] =
         {
             .interface = I2C3,
-            .handle    = NULL,
+            .handle    = { NULL },
             .pins =
                 {
                     .sda = NC,
@@ -106,7 +106,7 @@ static i2c_addr_size i2c_internal_addr_size;
  * @param [in] buffer           data buffer to write
  * @param [in] size             number of data bytes to write
  *
- * @returns status [SUCCESS, FAIL]
+ * @returns status [SMTC_SUCCESS, SMTC_FAIL]
  */
 static uint8_t i2c_write_buffer( const uint32_t id, uint8_t device_addr, uint16_t addr, uint8_t* buffer,
                                  uint16_t size );
@@ -120,7 +120,7 @@ static uint8_t i2c_write_buffer( const uint32_t id, uint8_t device_addr, uint16_
  * @param [in] buffer           data buffer to write
  * @param [in] size             number of data bytes to write
  *
- * @returns status [SUCCESS, FAIL]
+ * @returns status [SMTC_SUCCESS, SMTC_FAIL]
  */
 static uint8_t i2c_read_buffer( const uint32_t id, uint8_t device_addr, uint16_t addr, uint8_t* buffer, uint16_t size );
 
@@ -256,41 +256,41 @@ void HAL_I2C_MspDeInit( I2C_HandleTypeDef* i2cHandle )
 
 uint8_t hal_i2c_write( const uint32_t id, uint8_t device_addr, uint16_t addr, uint8_t data )
 {
-    if( i2c_write_buffer( id, device_addr, addr, &data, 1u ) == FAIL )
+    if( i2c_write_buffer( id, device_addr, addr, &data, 1u ) == SMTC_FAIL )
     {
         // if first attempt fails due to an IRQ, try a second time
-        if( i2c_write_buffer( id, device_addr, addr, &data, 1u ) == FAIL )
+        if( i2c_write_buffer( id, device_addr, addr, &data, 1u ) == SMTC_FAIL )
         {
-            return FAIL;
+            return SMTC_FAIL;
         }
         else
         {
-            return SUCCESS;
+            return SMTC_SUCCESS;
         }
     }
     else
     {
-        return SUCCESS;
+        return SMTC_SUCCESS;
     }
 }
 
 uint8_t hal_i2c_write_buffer( const uint32_t id, uint8_t device_addr, uint16_t addr, uint8_t* buffer, uint16_t size )
 {
-    if( i2c_write_buffer( id, device_addr, addr, buffer, size ) == FAIL )
+    if( i2c_write_buffer( id, device_addr, addr, buffer, size ) == SMTC_FAIL )
     {
         // if first attempt fails due to an IRQ, try a second time
-        if( i2c_write_buffer( id, device_addr, addr, buffer, size ) == FAIL )
+        if( i2c_write_buffer( id, device_addr, addr, buffer, size ) == SMTC_FAIL )
         {
-            return FAIL;
+            return SMTC_FAIL;
         }
         else
         {
-            return SUCCESS;
+            return SMTC_SUCCESS;
         }
     }
     else
     {
-        return SUCCESS;
+        return SMTC_SUCCESS;
     }
 }
 
@@ -313,7 +313,7 @@ void i2c_set_addr_size( i2c_addr_size addr_size ) { i2c_internal_addr_size = add
 
 static uint8_t i2c_write_buffer( const uint32_t id, uint8_t device_addr, uint16_t addr, uint8_t* buffer, uint16_t size )
 {
-    uint8_t  write_status = FAIL;
+    uint8_t  write_status = SMTC_FAIL;
     uint16_t memAddSize   = 0u;
 
     assert_param( ( id > 0 ) && ( ( id - 1 ) < sizeof( hal_i2c ) ) );
@@ -329,14 +329,14 @@ static uint8_t i2c_write_buffer( const uint32_t id, uint8_t device_addr, uint16_
     }
     if( HAL_I2C_Mem_Write( &hal_i2c[local_id].handle, device_addr, addr, memAddSize, buffer, size, 2000u ) == HAL_OK )
     {
-        write_status = SUCCESS;
+        write_status = SMTC_SUCCESS;
     }
     return write_status;
 }
 
 static uint8_t i2c_read_buffer( const uint32_t id, uint8_t device_addr, uint16_t addr, uint8_t* buffer, uint16_t size )
 {
-    uint8_t  readStatus = FAIL;
+    uint8_t  readStatus = SMTC_FAIL;
     uint16_t memAddSize = 0u;
 
     assert_param( ( id > 0 ) && ( ( id - 1 ) < sizeof( hal_i2c ) ) );
@@ -352,7 +352,7 @@ static uint8_t i2c_read_buffer( const uint32_t id, uint8_t device_addr, uint16_t
     }
     if( HAL_I2C_Mem_Read( &hal_i2c[local_id].handle, device_addr, addr, memAddSize, buffer, size, 2000 ) == HAL_OK )
     {
-        readStatus = SUCCESS;
+        readStatus = SMTC_SUCCESS;
     }
 
     return readStatus;

@@ -79,6 +79,17 @@
  * --- PRIVATE TYPES -----------------------------------------------------------
  */
 
+/*!
+ * @brief GNSS state used in the state machine
+ */
+typedef enum
+{
+    GNSS_START_SCAN,
+    GNSS_GET_RESULTS,
+    GNSS_TERMINATED,
+    GNSS_LOW_POWER,
+} gnss_state_t;
+
 /*
  * -----------------------------------------------------------------------------
  * --- PRIVATE VARIABLES -------------------------------------------------------
@@ -181,55 +192,10 @@ void lr1110_modem_gnss_scan_done( uint8_t* buffer, uint16_t size )
     if( destination == LR1110_MODEM_GNSS_DESTINATION_HOST )
     {
         lr1110_modem_helper_gnss_get_event_type( buffer, size, &event_type );
-
-        switch( event_type )
-        {
-        case LR1110_MODEM_GNSS_SCAN_DONE_ALMANAC_UPDATE_FAILS_CRC_ERROR:
-        case LR1110_MODEM_GNSS_SCAN_DONE_ALMANAC_UPDATE_FAILS_FLASH_INTEGRITY_ERROR:
-        case LR1110_MODEM_GNSS_SCAN_DONE_ALMANAC_VERSION_NOT_SUPPORTED:
-        case LR1110_MODEM_GNSS_SCAN_DONE_IQ_FAILS:
-        case LR1110_MODEM_GNSS_SCAN_DONE_NO_TIME:
-        case LR1110_MODEM_GNSS_SCAN_DONE_NO_SATELLITE_DETECTED:
-        case LR1110_MODEM_GNSS_SCAN_DONE_GLOBAL_ALMANAC_CRC_ERROR:
-        case LR1110_MODEM_GNSS_SCAN_DONE_ALMANAC_TOO_OLD:
-        default:
-        {
-            memcpy( gnss_scan_result_buffer, buffer, size );
-            gnss_scan_result_buffer_size = size;
-            gnss_state                   = GNSS_GET_RESULTS;
-        }
-        break;
-        }
     }
-    else if( destination == LR1110_MODEM_GNSS_DESTINATION_SOLVER )
-    {
-        memcpy( gnss_scan_result_buffer, buffer, size );
-        gnss_scan_result_buffer_size = size;
-        gnss_state                   = GNSS_GET_RESULTS;
-    }
-}
-
-void gnss_scan_set_type( uint8_t type )
-{
-    if( type == ASSISTED_MODE )
-    {
-        scan_type = ASSISTED_MODE;
-    }
-    else
-    {
-        scan_type = AUTONOMOUS_MODE;
-    }
-}
-
-void gnss_scan_init( const void* context, const gnss_settings_t* settings )
-{
-    gnss_state                   = GNSS_START_SCAN;
-    gnss_scan_result_buffer_size = 0;
-
-    timer_init( &gnss_scan_timeout_timer, on_gnss_scan_timeout_event );
-    timer_set_value( &gnss_scan_timeout_timer, GNSS_SCAN_TIMEOUT );
-
-    gnss_scan_configure( context, settings );
+    memcpy( gnss_scan_result_buffer, buffer, size );
+    gnss_scan_result_buffer_size = size;
+    gnss_state                   = GNSS_GET_RESULTS;
 }
 
 gnss_scan_result_t gnss_scan_execute( const void* context, const gnss_settings_t* settings,
@@ -260,7 +226,7 @@ gnss_scan_result_t gnss_scan_execute( const void* context, const gnss_settings_t
         switch( gnss_state )
         {
         case GNSS_START_SCAN:
-
+        {
             /* Turn on the scan led during the scan */
             leds_on( LED_SCAN_MASK );
 
@@ -292,9 +258,10 @@ gnss_scan_result_t gnss_scan_execute( const void* context, const gnss_settings_t
 
             gnss_state = GNSS_LOW_POWER;
             break;
+        }
 
         case GNSS_GET_RESULTS:
-
+        {
             /* Store the NAV message */
             memcpy( capture_result->nav_message, gnss_scan_result_buffer, gnss_scan_result_buffer_size );
             capture_result->nav_message_size = gnss_scan_result_buffer_size;
@@ -312,16 +279,24 @@ gnss_scan_result_t gnss_scan_execute( const void* context, const gnss_settings_t
             gnss_state = GNSS_TERMINATED;
 
             break;
+        }
 
         case GNSS_TERMINATED:
+        {
             gnss_state     = GNSS_START_SCAN;
             gnss_scan_done = true;
             break;
+        }
 
         case GNSS_LOW_POWER:
-            /* The MCU wakes up through events */
-            hal_mcu_low_power_handler( );
+        {
+            /* go in low power */
+            if( lr1110_modem_board_read_event_line( context ) == false )
+            {
+                hal_mcu_low_power_handler( );
+            }
             break;
+        }
         }
     }
 
@@ -382,39 +357,6 @@ void gnss_scan_display_results( const gnss_scan_single_result_t* capture_result 
     }
 
     HAL_DBG_TRACE_MSG( "\r\n" );
-}
-
-void gnss_scan_determine_best_nav_message( gnss_scan_single_result_t* pcb_capture_result,
-                                           gnss_scan_single_result_t* patch_capture_result )
-{
-    if( ( pcb_capture_result->is_valid_nav_message == true ) && ( patch_capture_result->is_valid_nav_message == true ) )
-    {
-        float pcb_nb_sv   = pcb_capture_result->nb_detected_satellites;
-        float patch_nb_sv = patch_capture_result->nb_detected_satellites;
-
-        if( fabs( pcb_nb_sv - patch_nb_sv ) > 1 )
-        {
-            if( pcb_capture_result->nb_detected_satellites > patch_capture_result->nb_detected_satellites )
-            {
-                patch_capture_result->is_valid_nav_message = false;
-            }
-            else
-            {
-                pcb_capture_result->is_valid_nav_message = false;
-            }
-        }
-        else
-        {
-            if( pcb_capture_result->average_cn > patch_capture_result->average_cn )
-            {
-                patch_capture_result->is_valid_nav_message = false;
-            }
-            else
-            {
-                pcb_capture_result->is_valid_nav_message = false;
-            }
-        }
-    }
 }
 
 /*
@@ -504,5 +446,29 @@ static void gnss_analyse_nav_message( const gnss_settings_t* settings, const gns
         *is_valid_nav_message = false;
     }
 }
+
+void gnss_scan_set_type( uint8_t type )
+{
+    if( type == ASSISTED_MODE )
+    {
+        scan_type = ASSISTED_MODE;
+    }
+    else
+    {
+        scan_type = AUTONOMOUS_MODE;
+    }
+}
+
+void gnss_scan_init( const void* context, const gnss_settings_t* settings )
+{
+    gnss_state                   = GNSS_START_SCAN;
+    gnss_scan_result_buffer_size = 0;
+
+    timer_init( &gnss_scan_timeout_timer, on_gnss_scan_timeout_event );
+    timer_set_value( &gnss_scan_timeout_timer, GNSS_SCAN_TIMEOUT );
+
+    gnss_scan_configure( context, settings );
+}
+
 
 /* --- EOF ------------------------------------------------------------------ */

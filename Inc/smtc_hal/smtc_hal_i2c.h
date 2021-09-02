@@ -29,8 +29,8 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef __SMTC_HAL_I2C_H__
-#define __SMTC_HAL_I2C_H__
+#ifndef SMTC_HAL_I2C_H
+#define SMTC_HAL_I2C_H
 
 #ifdef __cplusplus
 extern "C" {
@@ -44,7 +44,7 @@ extern "C" {
 #include <stdint.h>
 #include <stdbool.h>
 #include "stm32l4xx_hal.h"
-#include "utilities.h"
+#include "smtc_utilities.h"
 #include "smtc_hal_gpio_pin_names.h"
 
 /*
@@ -196,4 +196,4 @@ void hal_i2c_set_addr_size( i2c_addr_size addr_size );
 }
 #endif
 
-#endif  // __SMTC_HAL_I2C_H__
+#endif  // SMTC_HAL_I2C_H

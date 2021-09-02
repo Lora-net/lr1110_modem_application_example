@@ -28,8 +28,8 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-#ifndef __UTILITIES_H__
-#define __UTILITIES_H__
+#ifndef SMTC_UTILITIES_H
+#define SMTC_UTILITIES_H
 
 #ifdef __cplusplus
 extern "C" {
@@ -47,14 +47,6 @@ extern "C" {
  * --- PUBLIC MACROS -----------------------------------------------------------
  */
 
-/*!
- * @brief Returns 2 raised to the power of n
- *
- * @param [in] n power value
- * @returns result of raising 2 to the power n
- */
-#define POW2( n ) ( 1 << n )
-
 /*
  * -----------------------------------------------------------------------------
  * --- PUBLIC CONSTANTS --------------------------------------------------------
@@ -63,12 +55,12 @@ extern "C" {
 /*!
  * Generic definition
  */
-#ifndef SUCCESS
-#define SUCCESS 1
+#ifndef SMTC_SUCCESS
+#define SMTC_SUCCESS 1
 #endif
 
-#ifndef FAIL
-#define FAIL 0
+#ifndef SMTC_FAIL
+#define SMTC_FAIL 0
 #endif
 
 /*
@@ -146,6 +138,6 @@ int8_t Nibble2HexChar( uint8_t a );
 }
 #endif
 
-#endif  // __UTILITIES_H__
+#endif  // SMTC_UTILITIES_H
 
 /* --- EOF ------------------------------------------------------------------ */

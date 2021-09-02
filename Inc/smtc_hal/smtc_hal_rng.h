@@ -28,8 +28,8 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-#ifndef __SMTC_HAL_RNG_H__
-#define __SMTC_HAL_RNG_H__
+#ifndef SMTC_HAL_RNG_H
+#define SMTC_HAL_RNG_H
 
 #ifdef __cplusplus
 extern "C" {
@@ -95,4 +95,4 @@ int32_t hal_rng_get_signed_random_in_range( const int32_t val_1, const int32_t v
 }
 #endif
 
-#endif  // __SMTC_HAL_RNG_H__
+#endif  // SMTC_HAL_RNG_H

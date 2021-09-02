@@ -75,7 +75,7 @@ static hal_uart_t hal_uart[] = {
     [0] =
         {
             .interface = USART1,
-            .handle    = NULL,
+            .handle    = { NULL },
             .pins =
                 {
                     .tx = NC,
@@ -85,7 +85,7 @@ static hal_uart_t hal_uart[] = {
     [1] =
         {
             .interface = USART2,
-            .handle    = NULL,
+            .handle    = { NULL },
             .pins =
                 {
                     .tx = NC,
@@ -95,7 +95,7 @@ static hal_uart_t hal_uart[] = {
     [2] =
         {
             .interface = USART3,
-            .handle    = NULL,
+            .handle    = { NULL },
             .pins =
                 {
                     .tx = NC,

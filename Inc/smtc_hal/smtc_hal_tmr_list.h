@@ -29,8 +29,8 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef __SMTC_HAL_TMR_LIST_H__
-#define __SMTC_HAL_TMR_LIST_H__
+#ifndef SMTC_HAL_TMR_LIST_H
+#define SMTC_HAL_TMR_LIST_H
 
 #ifdef __cplusplus
 extern "C" {
@@ -182,6 +182,6 @@ timer_time_t timer_temp_compensation( timer_time_t period, float temperature );
 }
 #endif
 
-#endif  // __SMTC_HAL_TMR_LIST_H__
+#endif  // SMTC_HAL_TMR_LIST_H
 
 /* --- EOF ------------------------------------------------------------------ */

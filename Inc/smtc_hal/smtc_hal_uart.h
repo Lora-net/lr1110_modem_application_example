@@ -28,8 +28,8 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-#ifndef __SMTC_HAL_UART_H__
-#define __SMTC_HAL_UART_H__
+#ifndef SMTC_HAL_UART_H
+#define SMTC_HAL_UART_H
 
 #ifdef __cplusplus
 extern "C" {
@@ -41,7 +41,7 @@ extern "C" {
  */
 
 #include "stm32l4xx_hal.h"
-#include "utilities.h"
+#include "smtc_utilities.h"
 #include "smtc_hal_gpio_pin_names.h"
 
 /*
@@ -102,6 +102,6 @@ void hal_uart_rx( const uint32_t id, uint8_t* rx_buffer, uint8_t len );
 }
 #endif
 
-#endif  // __SMTC_HAL_UART_H__
+#endif  // SMTC_HAL_UART_H
 
 /* --- EOF ------------------------------------------------------------------ */

@@ -28,8 +28,8 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-#ifndef __SMTC_HAL_WATCHDOG_H__
-#define __SMTC_HAL_WATCHDOG_H__
+#ifndef SMTC_HAL_WATCHDOG_H
+#define SMTC_HAL_WATCHDOG_H
 
 #ifdef __cplusplus
 extern "C" {
@@ -83,6 +83,6 @@ void hal_watchdog_reload( void );
 }
 #endif
 
-#endif  // __SMTC_HAL_WATCHDOG_H__
+#endif  // SMTC_HAL_WATCHDOG_H
 
 /* --- EOF ------------------------------------------------------------------ */

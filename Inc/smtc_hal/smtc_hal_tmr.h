@@ -29,8 +29,8 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef __SMTC_HAL_TMR_H__
-#define __SMTC_HAL_TMR_H__
+#ifndef SMTC_HAL_TMR_H
+#define SMTC_HAL_TMR_H
 
 #ifdef __cplusplus
 extern "C" {
@@ -113,6 +113,6 @@ void hal_tmr_irq_disable( void );
 }
 #endif
 
-#endif  // __SMTC_HAL_TMR_H__
+#endif  // SMTC_HAL_TMR_H
 
 /* --- EOF ------------------------------------------------------------------ */

@@ -63,14 +63,11 @@
  * --- PRIVATE VARIABLES -------------------------------------------------------
  */
 
-#if defined( __GNUC__ )
-#pragma GCC diagnostic ignored "-Wmissing-braces"
-#endif
 static hal_spi_t hal_spi[] = {
     [0] =
         {
             .interface = SPI1,
-            .handle    = NULL,
+            .handle    = { NULL },
             .pins =
                 {
                     .mosi = NC,
@@ -81,7 +78,7 @@ static hal_spi_t hal_spi[] = {
     [1] =
         {
             .interface = SPI2,
-            .handle    = NULL,
+            .handle    = { NULL },
             .pins =
                 {
                     .mosi = NC,

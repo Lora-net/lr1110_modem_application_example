@@ -1,7 +1,7 @@
 /*!
- * @file      lr1110-modem-board.c
+ * @file      lr1110_modem_board.c
  *
- * @brief     Target board LR1110 tracker boards driver implementation
+ * @brief     Target board LR1110 EVK Modem board driver implementation
  *
  * Revised BSD License
  * Copyright Semtech Corporation 2020. All rights reserved.
@@ -41,6 +41,8 @@
 #include "lr1110_modem_lorawan.h"
 #include "lr1110_modem_board.h"
 #include "lr1110.h"
+#include "leds.h"
+#include "smtc_hal_tmr_list.h"
 
 /*
  * -----------------------------------------------------------------------------
@@ -59,6 +61,15 @@
  * --- PRIVATE TYPES -----------------------------------------------------------
  */
 
+/*!
+ * @brief LR1110 EVK LED context
+ */
+typedef struct
+{
+    timer_event_t led_timer;         /*!< @brief Pulse timer */
+    bool          timer_initialized; /*!< @brief True if the pulse timer has been initialized, false otherwise */
+} lr1110_modem_board_led_ctx_t;
+
 /*
  * -----------------------------------------------------------------------------
  * --- PRIVATE VARIABLES -------------------------------------------------------
@@ -68,6 +79,13 @@
  * @brief modem ready flag
  */
 static bool modem_is_ready = false;
+
+/*!
+ * @brief LED1110 EVK LED context array
+ */
+static lr1110_modem_board_led_ctx_t lr1110_modem_board_leds[LR1110_EVK_LED_COUNT] = { { .timer_initialized = false },
+                                                                                      { .timer_initialized = false },
+                                                                                      { .timer_initialized = false } };
 
 /*
  * -----------------------------------------------------------------------------
@@ -80,6 +98,13 @@ static bool modem_is_ready = false;
  * @param [in] context Chip implementation context
  */
 static lr1110_modem_response_code_t lr1110_modem_board_init_tcxo_io( const void* context );
+
+/*!
+ * @brief Pulse timer timeout callback
+ *
+ * @param context Context used to retrieve the index of the relevant LED.
+ */
+static void on_led_timer_event( void* context );
 
 /*
  * -----------------------------------------------------------------------------
@@ -133,7 +158,7 @@ void lr1110_modem_board_analog_deinit_io( const void* context )
 
 uint32_t lr1110_modem_board_get_tcxo_wakeup_time( void ) { return BOARD_TCXO_WAKEUP_TIME; }
 
-lr1110_modem_response_code_t lr1110_modem_board_init( const void* context, lr1110_modem_event_t* event )
+lr1110_modem_response_code_t lr1110_modem_board_init( const void* context, lr1110_modem_event_callback_t* event )
 {
     lr1110_modem_response_code_t modem_response_code = LR1110_MODEM_RESPONSE_CODE_OK;
     lr1110_modem_hal_status_t    modem_hal_status    = LR1110_MODEM_HAL_STATUS_OK;
@@ -144,7 +169,7 @@ lr1110_modem_response_code_t lr1110_modem_board_init( const void* context, lr111
 
     if( modem_hal_status != LR1110_MODEM_HAL_STATUS_OK )
     {
-        /* Something goes wrong with the lr1110 modem */
+        /* Something goes wrong with the lr1110 modem-e */
         return LR1110_MODEM_RESPONSE_CODE_FAIL;
     }
 
@@ -175,24 +200,31 @@ lr1110_modem_response_code_t lr1110_modem_board_init( const void* context, lr111
 
 uint32_t lr1110_modem_board_get_systime_from_gps( const void* context )
 {
-    uint32_t gps_time;
+    uint32_t gps_time = 0;
+
     lr1110_modem_helper_get_utc_time( context, &gps_time );
 
     return gps_time;
 }
 
-void lr1110_modem_get_almanac_dates( const void* context, uint32_t* oldest_almanac_date, uint32_t* newest_almanac_date )
+lr1110_modem_response_code_t  lr1110_modem_get_almanac_dates( const void* context, uint32_t* oldest_almanac_date, uint32_t* newest_almanac_date )
 {
-    uint8_t  i            = 0;
-    uint32_t almanac_date = 0;
+    uint8_t                      i                   = 0;
+    uint32_t                     almanac_date        = 0;
+    lr1110_modem_response_code_t modem_response_code = LR1110_MODEM_RESPONSE_CODE_OK;
 
     *oldest_almanac_date = 0;
     *newest_almanac_date = 0;
 
     for( i = 0; i < 127; i++ )
     {
-        lr1110_modem_helper_gnss_get_almanac_date_by_index( context, i, &almanac_date,
-                                                            GNSS_WEEK_NUMBER_ROLLOVER_2019_2038 );
+        modem_response_code = lr1110_modem_helper_gnss_get_almanac_date_by_index( context, i, &almanac_date,
+                                                                                  GNSS_WEEK_NUMBER_ROLLOVER_2019_2038 );
+
+        if( modem_response_code != LR1110_MODEM_RESPONSE_CODE_OK )
+        {
+            return modem_response_code;
+        }
 
         if( almanac_date > 0 )
         {
@@ -214,6 +246,8 @@ void lr1110_modem_get_almanac_dates( const void* context, uint32_t* oldest_alman
             }
         }
     }
+
+    return modem_response_code;
 }
 
 void lr1110_modem_board_lna_on( void ) { lna_on( ); }
@@ -260,17 +294,20 @@ lr1110_modem_response_code_t lr1110_modem_board_measure_battery_drop( const void
     switch( region )
     {
     case LR1110_LORAWAN_REGION_EU868:
+    case LR1110_LORAWAN_REGION_IN865:
+    case LR1110_LORAWAN_REGION_RU864:
     {
-        modem_response_code |=
-            lr1110_modem_test_tx_cont( context, 868100000, 14, LR1110_MODEM_TST_MODE_SF12,
-                                       LR1110_MODEM_TST_MODE_125_KHZ, LR1110_MODEM_TST_MODE_4_5, 51 );
+        modem_response_code |= lr1110_modem_test_tx_cw( context, 865500000, 14 );
         break;
     }
     case LR1110_LORAWAN_REGION_US915:
+    case LR1110_LORAWAN_REGION_AU915:
+    case LR1110_LORAWAN_REGION_AS923_GRP1:
+    case LR1110_LORAWAN_REGION_AS923_GRP2:
+    case LR1110_LORAWAN_REGION_AS923_GRP3:
+    case LR1110_LORAWAN_REGION_KR920:
     {
-        modem_response_code |=
-            lr1110_modem_test_tx_cont( context, 915000000, 14, LR1110_MODEM_TST_MODE_SF10,
-                                       LR1110_MODEM_TST_MODE_125_KHZ, LR1110_MODEM_TST_MODE_4_5, 51 );
+        modem_response_code |= lr1110_modem_test_tx_cw( context, 920900000, 14 );
         break;
     }
     default:
@@ -309,6 +346,66 @@ lr1110_modem_response_code_t lr1110_modem_board_measure_battery_drop( const void
     return modem_response_code;
 }
 
+void lr1110_modem_board_led_set( uint32_t led_mask, bool turn_on )
+{
+    /* If a pulse timer is running on one of the requested LEDs, it
+     *  must be stopped to avoid conflicting with the requested LED state. */
+    lr1110_evk_led_t led = LR1110_EVK_LED_TX;
+    for( led = LR1110_EVK_LED_TX; led < LR1110_EVK_LED_COUNT; led++ )
+    {
+        if( led_mask & ( 1 << led ) )
+        {
+            if( ( lr1110_modem_board_leds[led].timer_initialized ) &&
+                ( timer_is_started( &lr1110_modem_board_leds[led].led_timer ) ) )
+            {
+                timer_stop( &lr1110_modem_board_leds[led].led_timer );
+            }
+        }
+    }
+    if( turn_on )
+    {
+        leds_on( led_mask );
+    }
+    else
+    {
+        leds_off( led_mask );
+    }
+}
+
+void lr1110_modem_board_led_pulse( uint32_t led_mask, bool turn_on, uint32_t duration_ms )
+{
+    lr1110_evk_led_t led = LR1110_EVK_LED_TX;
+    for( led = LR1110_EVK_LED_TX; led < LR1110_EVK_LED_COUNT; led++ )
+    {
+        if( led_mask & ( 1 << led ) )
+        {
+            if( lr1110_modem_board_leds[led].timer_initialized )
+            {
+                if( timer_is_started( &lr1110_modem_board_leds[led].led_timer ) )
+                {
+                    timer_stop( &lr1110_modem_board_leds[led].led_timer );
+                }
+            }
+            else
+            {
+                timer_init( &lr1110_modem_board_leds[led].led_timer, on_led_timer_event );
+                timer_set_context( &lr1110_modem_board_leds[led].led_timer, ( void* ) led );
+                lr1110_modem_board_leds[led].timer_initialized = true;
+            }
+            timer_set_value( &lr1110_modem_board_leds[led].led_timer, duration_ms );
+            timer_start( &lr1110_modem_board_leds[led].led_timer );
+        }
+    }
+    if( turn_on )
+    {
+        leds_on( led_mask );
+    }
+    else
+    {
+        leds_off( led_mask );
+    }
+}
+
 /*
  * -----------------------------------------------------------------------------
  * --- PRIVATE FUNCTIONS DEFINITION --------------------------------------------
@@ -318,6 +415,14 @@ static lr1110_modem_response_code_t lr1110_modem_board_init_tcxo_io( const void*
 {
     return lr1110_modem_system_set_tcxo_mode( context, LR1110_MODEM_SYSTEM_TCXO_CTRL_1_8V,
                                               ( lr1110_modem_board_get_tcxo_wakeup_time( ) * 1000 ) / 30.52 );
+}
+
+void on_led_timer_event( void* context )
+{
+    lr1110_evk_led_t led      = ( lr1110_evk_led_t ) context;
+    uint32_t         led_mask = 1 << led;
+    leds_toggle( led_mask );
+    timer_stop( &lr1110_modem_board_leds[led].led_timer );
 }
 
 /* --- EOF ------------------------------------------------------------------ */

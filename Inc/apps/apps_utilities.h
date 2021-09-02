@@ -1,10 +1,12 @@
 /*!
- * @file      lorawan_config.h
+ * @file      apps_utilities.h
  *
- * @brief     LoRaWAN configuration definition
+ * @brief     Common Application Helper functions
  *
+ * @copyright
+ * @parblock
  * Revised BSD License
- * Copyright Semtech Corporation 2020. All rights reserved.
+ * Copyright Semtech Corporation 2021. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
@@ -27,10 +29,10 @@
  * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * @endparblock
  */
-
-#ifndef LORAWAN_CONFIG_H
-#define LORAWAN_CONFIG_H
+#ifndef APPS_UTILITIES_H
+#define APPS_UTILITIES_H
 
 #ifdef __cplusplus
 extern "C" {
@@ -41,7 +43,9 @@ extern "C" {
  * --- DEPENDENCIES ------------------------------------------------------------
  */
 
-#include "lr1110_modem_board.h"
+#include "lr1110_modem_lorawan.h"
+
+#include <stdint.h>
 
 /*
  * -----------------------------------------------------------------------------
@@ -52,58 +56,6 @@ extern "C" {
  * -----------------------------------------------------------------------------
  * --- PUBLIC CONSTANTS --------------------------------------------------------
  */
-
-/*!
- * @brief LoRaWAN ETSI duty cycle control enable/disable
- *
- * @remark Please note that ETSI mandates duty cycled transmissions. Set to false only for test purposes
- */
-#define LORAWAN_DUTYCYCLE_ON LR1110_MODEM_DUTY_CYCLE_ENABLE
-
-/*!
- * @brief LoRaWAN confirmed messages
- */
-#define LORAWAN_CONFIRMED_MSG_ON false
-
-#if defined( USE_LORAWAN_CLASS_A )
-    #define LORAWAN_CLASS_USED LR1110_LORAWAN_CLASS_A
-#elif defined( USE_LORAWAN_CLASS_C )
-    #define LORAWAN_CLASS_USED LR1110_LORAWAN_CLASS_C
-#else
-    #define LORAWAN_CLASS_USED LR1110_LORAWAN_CLASS_A
-#endif
-
-/*!
- * @brief Default datarate
- */
-#define LORAWAN_DEFAULT_DATARATE LR1110_MODEM_ADR_PROFILE_NETWORK_SERVER_CONTROLLED
-    
-/*!
- * @brief LoRaWAN confirmed messages
- */   
-#if defined( USE_REGION_EU868 )
-    #define LORAWAN_REGION_USED LR1110_LORAWAN_REGION_EU868
-#elif defined( USE_REGION_US915 )
-    #define LORAWAN_REGION_USED LR1110_LORAWAN_REGION_US915
-#elif defined( USE_REGION_AU915 )
-    #define LORAWAN_REGION_USED LR1110_LORAWAN_REGION_AU915
-#elif defined( USE_REGION_AS923_GRP1 )
-    #define LORAWAN_REGION_USED LR1110_LORAWAN_REGION_AS923_GRP1
-#elif defined( USE_REGION_CN470 )
-    #define LORAWAN_REGION_USED LR1110_LORAWAN_REGION_CN470
-#elif defined( USE_REGION_AS923_GRP2 )
-    #define LORAWAN_REGION_USED LR1110_LORAWAN_REGION_AS923_GRP2
-#elif defined( USE_REGION_AS923_GRP3 )
-    #define LORAWAN_REGION_USED LR1110_LORAWAN_REGION_AS923_GRP3
-#elif defined( USE_REGION_IN865 )
-    #define LORAWAN_REGION_USED LR1110_LORAWAN_REGION_IN865
- #elif defined( USE_REGION_KR920 )
-    #define LORAWAN_REGION_USED LR1110_LORAWAN_REGION_KR920
-#elif defined( USE_REGION_RU864 )
-    #define LORAWAN_REGION_USED LR1110_LORAWAN_REGION_RU864
-#else
-    #error No region selected: define a region
-#endif
 
 /*
  * -----------------------------------------------------------------------------
@@ -116,19 +68,34 @@ extern "C" {
  */
 
 /*!
- * @brief Lorawan default init
+ * @brief Prints the provided buffer in HEX
  *
- * @param [in] region LoRaWAN region to use \ref lr1110_modem_regions_t
- * @param [in] lorawan_class LoRaWAN class to use \ref lr1110_modem_classes_t
- *
- * @returns Operation status
+ * @param [in] buffer Buffer to be printed
+ * @param [in] size Buffer size to be printed
  */
-lr1110_modem_response_code_t lorawan_init( lr1110_modem_regions_t region, lr1110_modem_classes_t lorawan_class );
+void print_hex_buffer( const uint8_t* buffer, uint8_t size );
+
+/*!
+ * @brief Prints the LoRaWAN keys
+ *
+ * @param [in] dev_eui Device EUI to be printed
+ * @param [in] join_eui Join EUI to be printed
+ * @param [in] app_key Application Key to be printed
+ * @param [in] pin pin code
+ * @param [in] use_semtech_join_server specify if the Semtech join server is used
+ */
+void print_lorawan_keys( const uint8_t* dev_eui, const uint8_t* join_eui, const uint8_t* app_key, const uint32_t pin,
+                         const bool use_semtech_join_server );
+
+/*!
+ * @brief convert lr1110 modem-e status to string
+ */
+void modem_status_to_string( lr1110_modem_status_t modem_status );
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif  // LORAWAN_CONFIG_H
+#endif  // APPS_UTILITIES_H
 
 /* --- EOF ------------------------------------------------------------------ */

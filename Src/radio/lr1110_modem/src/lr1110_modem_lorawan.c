@@ -133,6 +133,8 @@
 #define LR1110_MODEM_GET_NB_TRANS_CMD_LENGTH ( 2 )
 #define LR1110_MODEM_SET_STREAM_REDUNDANCY_RATE_CMD_LENGTH ( 2 + 1 )
 #define LR1110_MODEM_GET_STREAM_REDUNDANCY_RATE_CMD_LENGTH ( 2 )
+#define LR1110_MODEM_SET_CRYSTAL_ERROR_CMD_LENGTH ( 2 + 4 )
+#define LR1110_MODEM_GET_CRYSTAL_ERROR_CMD_LENGTH ( 2 )
 
 #define LR1110_MODEM_INFO_FIELDS_RBUFFER_MAX_LENGTH ( 20 )
 #define LR1110_MODEM_CHIP_EUI_RBUFFER_LENGTH ( 8 )
@@ -229,6 +231,8 @@ enum
     LR1110_MODEM_GET_NB_TRANS_CMD                      = 0x50,
     LR1110_MODEM_SET_STREAM_REDUNDANCY_RATE_CMD        = 0x51,
     LR1110_MODEM_GET_STREAM_REDUNDANCY_RATE_CMD        = 0x52,
+    LR1110_MODEM_SET_CRYSTAL_ERROR_CMD                 = 0x53,
+    LR1110_MODEM_GET_CRYSTAL_ERROR_CMD                 = 0x54,
 };
 
 /*
@@ -1709,6 +1713,40 @@ lr1110_modem_response_code_t lr1110_modem_get_stream_redundancy_rate( const void
     return ( lr1110_modem_response_code_t ) lr1110_modem_hal_read( context, cbuffer,
                                                                    LR1110_MODEM_GET_STREAM_REDUNDANCY_RATE_CMD_LENGTH,
                                                                    stream_redundancy_rate, sizeof( uint8_t ) );
+}
+
+lr1110_modem_response_code_t lr1110_modem_set_crystal_error( const void* context, const uint32_t crystal_error )
+{
+    uint8_t cbuffer[LR1110_MODEM_SET_CRYSTAL_ERROR_CMD_LENGTH];
+
+    cbuffer[0] = LR1110_MODEM_GROUP_ID_MODEM;
+    cbuffer[1] = LR1110_MODEM_SET_CRYSTAL_ERROR_CMD;
+
+    cbuffer[2] = ( uint8_t )( crystal_error >> 24 );
+    cbuffer[3] = ( uint8_t )( crystal_error >> 16 );
+    cbuffer[4] = ( uint8_t )( crystal_error >> 8 );
+    cbuffer[5] = ( uint8_t ) crystal_error;
+
+    return ( lr1110_modem_response_code_t ) lr1110_modem_hal_write( context, cbuffer,
+                                                                    LR1110_MODEM_SET_CRYSTAL_ERROR_CMD_LENGTH, 0, 0 );
+}
+
+lr1110_modem_response_code_t lr1110_modem_get_crystal_error( const void* context, uint32_t* crystal_error )
+{
+    uint8_t                      cbuffer[LR1110_MODEM_GET_CRYSTAL_ERROR_CMD_LENGTH];
+    uint8_t                      rbuffer[sizeof( uint32_t )] = { 0x00 };
+    lr1110_modem_response_code_t rc;
+
+    cbuffer[0] = LR1110_MODEM_GROUP_ID_MODEM;
+    cbuffer[1] = LR1110_MODEM_GET_CRYSTAL_ERROR_CMD;
+
+    rc = ( lr1110_modem_response_code_t ) lr1110_modem_hal_read(
+        context, cbuffer, LR1110_MODEM_GET_CRYSTAL_ERROR_CMD_LENGTH, rbuffer, sizeof( uint32_t ) );
+
+    *crystal_error = ( ( uint32_t ) rbuffer[0] << 24 ) + ( ( uint32_t ) rbuffer[1] << 16 ) +
+                     ( ( uint32_t ) rbuffer[2] << 8 ) + ( ( uint32_t ) rbuffer[3] );
+
+    return rc;
 }
 
 /*

@@ -1,10 +1,13 @@
 /*!
- * @file      main_loramac_a.c
+ * @ingroup   apps_lorawan
+ * @file      main_lorawan.c
  *
- * @brief     lr1110 Modem classA device implementation
+ * @brief     lr1110 Modem-E Class A/C device implementation
  *
+ * @copyright
+ * @parblock
  * Revised BSD License
- * Copyright Semtech Corporation 2020. All rights reserved.
+ * Copyright Semtech Corporation 2021. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
@@ -27,17 +30,26 @@
  * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * @endparblock
+ */
+
+/*!
+ * @addtogroup apps_lorawan
+ * LR1110 Modem-E Class A/C device implementation
+ * @{
  */
 
 /*
  * -----------------------------------------------------------------------------
  * --- DEPENDENCIES ------------------------------------------------------------
  */
+
 #include <stdio.h>
+#include "main_lorawan.h"
 #include "lorawan_commissioning.h"
-#include "lorawan_config.h"
 #include "lr1110_modem_board.h"
-#include "utilities.h"
+#include "smtc_utilities.h"
+#include "apps_utilities.h"
 
 /*
  * -----------------------------------------------------------------------------
@@ -48,45 +60,6 @@
  * -----------------------------------------------------------------------------
  * --- PRIVATE CONSTANTS -------------------------------------------------------
  */
-
-/*!
- * @brief Defines the application data transmission duty cycle. 20s, value in [ms].
- */
-#define APP_TX_DUTYCYCLE 20000
-
-/*!
- * @brief Defines the watchdog timeout application
- * when device has moved. APP_TX_DUTYCYCLE * 2, value in [ms].
- */
-#define WATCHDOG_TIMEOUT APP_TX_DUTYCYCLE * 2
-
-/*!
- * @brief LoRaWAN application port
- */
-#define LORAWAN_APP_PORT 2
-
-/*!
- * @brief User application data buffer size
- */
-#define LORAWAN_APP_DATA_MAX_SIZE 242
-
-/*!
- * @brief LoRaWAN port used to trigger application events
- */
-#define APPLICATION_MSG_PORT 151
-
-/*!
- * @brief TLV used to execute application events
- */
-#define SET_RX_LED_CMD 0x4F
-#define SET_RX_LED_LEN 0x01
-
-/*!
- * @brief Defines the application firmware version
- */
-#define MAJOR_APP_VERSION 1
-#define MINOR_APP_VERSION 4
-#define SUB_MINOR_APP_VERSION 1
 
 /*
  * -----------------------------------------------------------------------------
@@ -104,20 +77,9 @@
 extern lr1110_t lr1110;
 
 /*!
- * @brief Application port
- */
-static uint8_t app_port = LORAWAN_APP_PORT;
-
-/*!
- * @brief ADR custom list when ADR is set to custom
- */
-uint8_t adr_custom_list[16] = { 0x05, 0x05, 0x05, 0x04, 0x04, 0x04, 0x03, 0x03,
-                                0x03, 0x02, 0x02, 0x02, 0x01, 0x01, 0x00, 0x00 };
-
-/*!
  * @brief User application data size
  */
-static uint8_t app_data_size = 1;
+static uint8_t app_data_size = 0;
 
 /*!
  * @brief User application data
@@ -125,24 +87,9 @@ static uint8_t app_data_size = 1;
 static uint8_t app_data_buffer[LORAWAN_APP_DATA_MAX_SIZE];
 
 /*!
- * @brief Indicates if the node is sending confirmed or unconfirmed messages
- */
-static lr1110_modem_uplink_type_t is_tx_confirmed = ( lr1110_modem_uplink_type_t ) LORAWAN_CONFIRMED_MSG_ON;
-
-/*!
- * @brief Timer to handle the state of LED TX
- */
-static timer_event_t led_tx_timer;
-
-/*!
- * @brief Timer to handle the state of LED RX
- */
-static timer_event_t led_rx_timer;
-
-/*!
  * @brief Device states
  */
-static enum edevice_state {
+static enum device_state_e {
     DEVICE_STATE_INIT,
     DEVICE_STATE_JOIN,
     DEVICE_STATE_SEND,
@@ -150,50 +97,10 @@ static enum edevice_state {
     DEVICE_STATE_SLEEP
 } device_state = DEVICE_STATE_INIT;
 
-/*!
- * @brief Uplink counter \note only for trace/debug
- */
-static uint32_t uplink_cnt = 0;
-
-/*!
- * @brief Downlink counter \note only for trace/debug
- */
-static uint32_t downlink_cnt = 0;
-
 /*
  * -----------------------------------------------------------------------------
  * --- PRIVATE FUNCTIONS DECLARATION -------------------------------------------
  */
-
-/*!
- * @brief Prints the provided buffer in HEX
- *
- * @param [in] buffer Buffer to be printed
- * @param [in] size Buffer size to be printed
- */
-static void print_hex_buffer( const uint8_t* buffer, uint8_t size );
-
-/*!
- * @brief Prints the LoRaWAN keys
- *
- * @param [in] dev_eui Device EUI to be printed
- * @param [in] join_eui Join EUI to be printed
- * @param [in] app_key Application Key to be printed
- * @param [in] pin pin code
- */
-static void print_lorawan_keys( const uint8_t* dev_eui, const uint8_t* join_eui, const uint8_t* app_key,
-                                const uint32_t pin );
-
-/*!
- * @brief Prints the provided buffer in HEX
- *
- * @param [in] port LoRaWAN application used
- * @param [out] tx_frame_buffer buffer containing the LoRaWAN buffer
- * @param [out] tx_frame_buffer_size payload len buffer
- * @param [in] max_tx_buffer_size the maximum buffer len allowed by the user
- */
-static void prepare_tx_frame( uint8_t port, uint8_t* tx_frame_buffer, uint8_t* tx_frame_buffer_size,
-                              uint8_t max_tx_buffer_size );
 
 /*!
  * Executes the network Join request
@@ -201,27 +108,46 @@ static void prepare_tx_frame( uint8_t port, uint8_t* tx_frame_buffer, uint8_t* t
 static void join_network( void );
 
 /*!
- * @brief   Prepares the payload of the frame
+ * @brief   Send an application frame on LoRaWAN port defined by LORAWAN_APP_PORT
  *
- * @param [in] port LoRaWAN application used
  * @param [in] tx_frame_buffer   buffer containing the LoRaWAN buffer
  * @param [in] tx_frame_buffer_size   payload len buffer
  * @param [in] confirmed   send a confirmed or unconfirmed uplink [false : unconfirmed / true : confirmed]
  *
- * @returns  [0: frame could be send, 1: error]
+ * @returns  [true: frame could be send, false: error]
  */
-static bool send_frame( const uint8_t port, const uint8_t* tx_frame_buffer, const uint8_t tx_frame_buffer_size,
+static bool send_frame( const uint8_t* tx_frame_buffer, const uint8_t tx_frame_buffer_size,
                         const lr1110_modem_uplink_type_t confirmed );
 
 /*!
- * @brief Function executed on Led TX Timeout event
+ * @brief Parse the received downlink
+ *
+ * Demonstrates how a TLV-encoded command sequence received by downlink can
+ *  control the state of an LED.
+ * Can easily be extended to handle other commands received on the same port
+ *  or another port.
+ *
+ * @param [in] port LoRaWAN port
+ * @param [in] payload Payload Buffer
+ * @param [in] size Payload size
  */
-static void on_led_tx_timer_event( void* context );
+static void parse_downlink_frame( uint8_t port, const uint8_t* payload, uint8_t size );
 
 /*!
- * @brief Function executed on Led RX Timeout event
+ * @brief Lorawan default init
+ *
+ * @param [in] region LoRaWAN region to use \ref lr1110_modem_regions_t
+ * @param [in] lorawan_class LoRaWAN class to use \ref lr1110_modem_classes_t
+ *
+ * @returns Operation status
  */
-static void on_led_rx_timer_event( void* context );
+lr1110_modem_response_code_t lorawan_init( lr1110_modem_regions_t region, lr1110_modem_classes_t lorawan_class );
+
+/*!
+ * @addtogroup lr1110_evt_callback
+ * LR1110 event callbacks
+ * @{
+ */
 
 /*!
  * @brief Reset event callback
@@ -275,19 +201,9 @@ static void lr1110_modem_mute( lr1110_modem_mute_t mute );
 /*!
  * @brief Set conf event callback
  *
- * @param [in] info_tag    modem mute status \ref lr1110_modem_mute_t
+ * @param [in] tag   \ref lr1110_modem_event_setconf_tag_t
  */
-static void lr1110_modem_set_conf( uint8_t info_tag );
-
-/*!
- * @brief Stream done event callback
- */
-static void lr1110_modem_stream_done( void );
-
-/*!
- * @brief Time updated by application layer clock synchronisation event callback
- */
-static void lr1110_modem_time_updated_alc_sync( lr1110_modem_alc_sync_state_t alc_sync_state );
+static void lr1110_modem_set_conf( lr1110_modem_event_setconf_tag_t tag );
 
 /*!
  * @brief Automatic switch from mobile to static ADR when connection timeout occurs event callback
@@ -305,18 +221,8 @@ static void lr1110_modem_new_link_adr( void );
 static void lr1110_modem_no_event( void );
 
 /*!
- * @brief Parse the received downlink
- *
- * @param [in] port LoRaWAN port
- * @param [in] payload Payload Buffer
- * @param [in] size Payload size
+ * @}
  */
-static void parse_frame( uint8_t port, const uint8_t* payload, uint8_t size );
-
-/*!
- * @brief convert lr1110 modem status to string
- */
-static void modem_status_to_string( lr1110_modem_status_t modem_status );
 
 /*
  * -----------------------------------------------------------------------------
@@ -328,10 +234,10 @@ static void modem_status_to_string( lr1110_modem_status_t modem_status );
  */
 int main( void )
 {
-    volatile lr1110_modem_response_code_t modem_response_code = LR1110_MODEM_RESPONSE_CODE_OK;
-    lr1110_modem_version_t                modem;
-    lr1110_modem_event_t                  lr1110_modem_event;
-    uint32_t                              pin;
+    lr1110_modem_response_code_t  modem_response_code = LR1110_MODEM_RESPONSE_CODE_OK;
+    lr1110_modem_version_t        modem;
+    lr1110_modem_event_callback_t lr1110_modem_event_callback = { NULL };
+    uint32_t                      pin;
 
     uint8_t dev_eui[LORAWAN_DEVICE_EUI_LEN] = LORAWAN_DEVICE_EUI;
     uint8_t join_eui[LORAWAN_JOIN_EUI_LEN]  = LORAWAN_JOIN_EUI;
@@ -345,40 +251,39 @@ int main( void )
     leds_blink( LED_ALL_MASK, 100, 2, true );
 
     HAL_DBG_TRACE_MSG( "\r\n" );
-    HAL_DBG_TRACE_INFO( "###### ===== LR1110 Modem ClassA demo application ==== ######\r\n\r\n" );
+    HAL_DBG_TRACE_INFO( "###### ===== LoRa Basics Modem-E LoRaWAN Class A/C demo application ==== ######\r\n\r\n" );
     HAL_DBG_TRACE_PRINTF( "APP VERSION : %d.%d.%d\r\n\r\n", MAJOR_APP_VERSION, MINOR_APP_VERSION,
                           SUB_MINOR_APP_VERSION );
 
-    /* Init LR1110 modem event */
-    lr1110_modem_event.reset                 = lr1110_modem_reset_event;
-    lr1110_modem_event.alarm                 = lr1110_modem_alarm;
-    lr1110_modem_event.joined                = lr1110_modem_network_joined;
-    lr1110_modem_event.join_fail             = lr1110_modem_join_fail;
-    lr1110_modem_event.tx_done               = lr1110_modem_tx_done;
-    lr1110_modem_event.down_data             = lr1110_modem_down_data;
-    lr1110_modem_event.set_conf              = lr1110_modem_set_conf;
-    lr1110_modem_event.mute                  = lr1110_modem_mute;
-    lr1110_modem_event.stream_done           = lr1110_modem_stream_done;
-    lr1110_modem_event.time_updated_alc_sync = lr1110_modem_time_updated_alc_sync;
-    lr1110_modem_event.adr_mobile_to_static  = lr1110_modem_adr_mobile_to_static;
-    lr1110_modem_event.new_link_adr          = lr1110_modem_new_link_adr;
-    lr1110_modem_event.no_event              = lr1110_modem_no_event;
+    /* Init LR1110 modem-e event */
+    memset( &lr1110_modem_event_callback, 0, sizeof( lr1110_modem_event_callback ) );
+    lr1110_modem_event_callback.reset                = lr1110_modem_reset_event;
+    lr1110_modem_event_callback.alarm                = lr1110_modem_alarm;
+    lr1110_modem_event_callback.joined               = lr1110_modem_network_joined;
+    lr1110_modem_event_callback.join_fail            = lr1110_modem_join_fail;
+    lr1110_modem_event_callback.tx_done              = lr1110_modem_tx_done;
+    lr1110_modem_event_callback.down_data            = lr1110_modem_down_data;
+    lr1110_modem_event_callback.set_conf             = lr1110_modem_set_conf;
+    lr1110_modem_event_callback.mute                 = lr1110_modem_mute;
+    lr1110_modem_event_callback.adr_mobile_to_static = lr1110_modem_adr_mobile_to_static;
+    lr1110_modem_event_callback.new_link_adr         = lr1110_modem_new_link_adr;
+    lr1110_modem_event_callback.no_event             = lr1110_modem_no_event;
 
-    if( lr1110_modem_board_init( &lr1110, &lr1110_modem_event ) != LR1110_MODEM_RESPONSE_CODE_OK )
+    if( lr1110_modem_board_init( &lr1110, &lr1110_modem_event_callback ) != LR1110_MODEM_RESPONSE_CODE_OK )
     {
         HAL_DBG_TRACE_ERROR( "###### ===== LR1110 BOARD INIT FAIL ==== ######\r\n\r\n" );
     }
 
-    /* LR1110 modem version */
+    /* LR1110 modem-e version */
     lr1110_modem_get_version( &lr1110, &modem );
-    HAL_DBG_TRACE_INFO( "###### ===== LR1110 MODEM VERSION ==== ######\r\n\r\n" );
+    HAL_DBG_TRACE_INFO( "###### ===== LR1110 MODEM-E VERSION ==== ######\r\n\r\n" );
     HAL_DBG_TRACE_PRINTF( "LORAWAN     : %#04X\r\n", modem.lorawan );
     HAL_DBG_TRACE_PRINTF( "FIRMWARE    : %#02X\r\n", modem.firmware );
     HAL_DBG_TRACE_PRINTF( "BOOTLOADER  : %#02X\r\n", modem.bootloader );
 
 #if( USE_PRODUCTION_KEYS == 1 )
-    modem_response_code = lr1110_modem_get_dev_eui( &lr1110, dev_eui );
-    modem_response_code = lr1110_modem_get_join_eui( &lr1110, join_eui );
+    /* When the production keys are used, DevEUI = ChipEUI and JoinEUI is the one defined in lorawan_comissioning.h */
+    modem_response_code = lr1110_modem_get_chip_eui( &lr1110, dev_eui );
 #endif
 
     /* Basic LoRaWAN configuration */
@@ -387,14 +292,8 @@ int main( void )
         HAL_DBG_TRACE_ERROR( "###### ===== LORAWAN INIT ERROR ==== ######\r\n\r\n" );
     }
 
-    /* Init the software watchdog */
-    hal_mcu_init_software_watchdog( WATCHDOG_TIMEOUT );
-
-    /* Init Leds timer */
-    timer_init( &led_tx_timer, on_led_tx_timer_event );
-    timer_set_value( &led_tx_timer, 25 );
-    timer_init( &led_rx_timer, on_led_rx_timer_event );
-    timer_set_value( &led_rx_timer, 25 );
+    /* Configure the partial low power mode */
+    hal_mcu_partial_sleep_enable( APP_PARTIAL_SLEEP );
 
     while( 1 )
     {
@@ -408,7 +307,7 @@ int main( void )
         {
         case DEVICE_STATE_INIT:
         {
-            HAL_DBG_TRACE_INFO( "###### ===== LR1110 MODEM INIT ==== ######\r\n\r\n" );
+            HAL_DBG_TRACE_INFO( "###### ===== LR1110 MODEM-E INIT ==== ######\r\n\r\n" );
 
             /* Set Keys */
             modem_response_code = lr1110_modem_set_dev_eui( &lr1110, dev_eui );
@@ -428,7 +327,7 @@ int main( void )
         case DEVICE_STATE_JOIN:
         {
             /* Display used keys */
-            print_lorawan_keys( dev_eui, join_eui, app_key, pin );
+            print_lorawan_keys( dev_eui, join_eui, app_key, pin, USE_SEMTECH_JOIN_SERVER );
 
             join_network( );
 
@@ -438,20 +337,30 @@ int main( void )
         }
         case DEVICE_STATE_SEND:
         {
-            prepare_tx_frame( app_port, app_data_buffer, &app_data_size, 4 );
+            /* Send LR1110 modem-e charge */
+            uint32_t charge     = 0;
+            modem_response_code = lr1110_modem_get_charge( &lr1110, &charge );
+            if( modem_response_code != ( lr1110_modem_response_code_t ) LR1110_MODEM_HAL_STATUS_OK )
+            {
+                HAL_DBG_TRACE_PRINTF( "\r\n lr1110_modem_get_charge returned RC : %d \r\n", modem_response_code );
+            }
 
-            send_frame( app_port, app_data_buffer, app_data_size, is_tx_confirmed );
+            app_data_buffer[0] = charge;
+            app_data_buffer[1] = charge >> 8;
+            app_data_buffer[2] = charge >> 16;
+            app_data_buffer[3] = charge >> 24;
+            app_data_size      = 4;
+
+            /* Send the next frame */
+            send_frame( app_data_buffer, app_data_size,
+                        LORAWAN_CONFIRMED_MSG_ON ? LR1110_MODEM_UPLINK_CONFIRMED : LR1110_MODEM_UPLINK_UNCONFIRMED );
 
             device_state = DEVICE_STATE_CYCLE;
+
             break;
         }
         case DEVICE_STATE_CYCLE:
         {
-            /* Reload the software watchdog */
-            hal_mcu_reset_software_watchdog( );
-
-            device_state = DEVICE_STATE_SLEEP;
-
             /* Schedule next packet transmission */
             do
             {
@@ -460,12 +369,17 @@ int main( void )
 
             HAL_DBG_TRACE_PRINTF( "lr1110_modem_set_alarm_timer : %d s\r\n\r\n", APP_TX_DUTYCYCLE / 1000 );
 
+            device_state = DEVICE_STATE_SLEEP;
+
             break;
         }
         case DEVICE_STATE_SLEEP:
         {
-            /* The MCU wakes up through events */
-            hal_mcu_low_power_handler( );
+            /* go in low power */
+            if( lr1110_modem_board_read_event_line( &lr1110 ) == false )
+            {
+                hal_mcu_low_power_handler( );
+            }
 
             break;
         }
@@ -478,70 +392,10 @@ int main( void )
     }
 }
 
-void _Error_Handler( int line )
-{
-    /* USER CODE BEGIN Error_Handler_Debug */
-    /* User can add his own implementation to report the HAL error return state */
-    while( 1 )
-    {
-        HAL_DBG_TRACE_ERROR( "%s\n", __FUNCTION__ );
-    }
-    /* USER CODE END Error_Handler_Debug */
-}
 /*
  * -----------------------------------------------------------------------------
  * --- PRIVATE FUNCTIONS DEFINITION --------------------------------------------
  */
-
-static void print_hex_buffer( const uint8_t* buffer, uint8_t size )
-{
-    uint8_t newline = 0;
-
-    for( uint8_t i = 0; i < size; i++ )
-    {
-        if( newline != 0 )
-        {
-            HAL_DBG_TRACE_PRINTF( "\r\n" );
-            newline = 0;
-        }
-
-        HAL_DBG_TRACE_PRINTF( "%02X ", buffer[i] );
-
-        if( ( ( i + 1 ) % 16 ) == 0 )
-        {
-            newline = 1;
-        }
-    }
-    HAL_DBG_TRACE_PRINTF( "\r\n" );
-}
-
-static void print_lorawan_keys( const uint8_t* dev_eui, const uint8_t* join_eui, const uint8_t* app_key, uint32_t pin )
-{
-    HAL_DBG_TRACE_PRINTF( "DevEui      : %02X", dev_eui[0] );
-    for( int i = 1; i < 8; i++ )
-    {
-        HAL_DBG_TRACE_PRINTF( "-%02X", dev_eui[i] );
-    }
-    HAL_DBG_TRACE_PRINTF( "\r\n" );
-    HAL_DBG_TRACE_PRINTF( "AppEui      : %02X", join_eui[0] );
-    for( int i = 1; i < 8; i++ )
-    {
-        HAL_DBG_TRACE_PRINTF( "-%02X", join_eui[i] );
-    }
-    HAL_DBG_TRACE_PRINTF( "\r\n" );
-#if( USE_SEMTECH_JOIN_SERVER == 1 )
-    HAL_DBG_TRACE_MSG( "AppKey      : Semtech join server used\r\n" );
-#else
-    HAL_DBG_TRACE_PRINTF( "AppKey      : %02X", app_key[0] );
-    for( int i = 1; i < 16; i++ )
-    {
-        HAL_DBG_TRACE_PRINTF( "-%02X", app_key[i] );
-    }
-    HAL_DBG_TRACE_PRINTF( "\r\n" );
-#endif
-
-    HAL_DBG_TRACE_PRINTF( "Pin         : %08X\r\n\r\n", pin );
-}
 
 static void join_network( void )
 {
@@ -560,37 +414,7 @@ static void join_network( void )
     }
 }
 
-static void prepare_tx_frame( uint8_t port, uint8_t* tx_frame_buffer, uint8_t* tx_frame_buffer_size,
-                              uint8_t max_tx_buffer_size )
-{
-    switch( port )
-    {
-    case 2:
-    {
-        lr1110_modem_response_code_t modem_response_code = LR1110_MODEM_RESPONSE_CODE_OK;
-        uint32_t                     charge              = 0;
-
-        /* Send LR1110 modem charge */
-        modem_response_code = lr1110_modem_get_charge( &lr1110, &charge );
-
-        if( max_tx_buffer_size < 4 )
-        {
-            return;
-        }
-        *tx_frame_buffer_size = 4;
-
-        tx_frame_buffer[0] = charge;
-        tx_frame_buffer[1] = charge >> 8;
-        tx_frame_buffer[2] = charge >> 16;
-        tx_frame_buffer[3] = charge >> 24;
-    }
-    break;
-    default:
-        break;
-    }
-}
-
-static bool send_frame( const uint8_t port, const uint8_t* tx_frame_buffer, const uint8_t tx_frame_buffer_size,
+static bool send_frame( const uint8_t* tx_frame_buffer, const uint8_t tx_frame_buffer_size,
                         const lr1110_modem_uplink_type_t tx_confirmed )
 {
     lr1110_modem_response_code_t modem_response_code = LR1110_MODEM_RESPONSE_CODE_OK;
@@ -599,62 +423,50 @@ static bool send_frame( const uint8_t port, const uint8_t* tx_frame_buffer, cons
 
     lr1110_modem_get_duty_cycle_status( &lr1110, &duty_cycle );
 
-    if( duty_cycle >= 0 )
+    if( duty_cycle < 0 )
     {
-        lr1110_modem_get_next_tx_max_payload( &lr1110, &tx_max_payload );
+        HAL_DBG_TRACE_INFO( "DUTY CYCLE, NEXT UPLINK AVAILABLE in %d milliseconds \r\n\r\n", -duty_cycle );
 
-        if( tx_frame_buffer_size > tx_max_payload )
-        {
-            /* Send empty frame in order to flush MAC commands */
-            HAL_DBG_TRACE_PRINTF( "\r\n APP DATA > MAX PAYLOAD AVAILABLE (%d bytes) \r\n", tx_max_payload );
+        return false;
+    }
 
-            modem_response_code = lr1110_modem_request_tx( &lr1110, port, tx_confirmed, NULL, 0 );
-        }
-        else
-        {
-            modem_response_code =
-                lr1110_modem_request_tx( &lr1110, port, tx_confirmed, tx_frame_buffer, tx_frame_buffer_size );
-        }
+    modem_response_code = lr1110_modem_get_next_tx_max_payload( &lr1110, &tx_max_payload );
+    if( modem_response_code != ( lr1110_modem_response_code_t ) LR1110_MODEM_HAL_STATUS_OK )
+    {
+        HAL_DBG_TRACE_ERROR( "\r\n lr1110_modem_get_next_tx_max_payload RC : %d \r\n", modem_response_code );
+    }
 
-        if( modem_response_code == LR1110_MODEM_RESPONSE_CODE_OK )
-        {
-            HAL_DBG_TRACE_INFO( "LR1110 MODEM REQUEST TX \r\n\r\n" );
+    if( tx_frame_buffer_size > tx_max_payload )
+    {
+        /* Send empty frame in order to flush MAC commands */
+        HAL_DBG_TRACE_PRINTF( "\r\n APP DATA > MAX PAYLOAD AVAILABLE (%d bytes) \r\n", tx_max_payload );
 
-            return true;
-        }
-        else
-        {
-            HAL_DBG_TRACE_ERROR( "LR1110 MODEM REQUEST TX ERROR CMD, modem_response_code : %d \r\n\r\n",
-                                 modem_response_code );
-
-            return false;
-        }
+        modem_response_code = lr1110_modem_request_tx( &lr1110, LORAWAN_APP_PORT, tx_confirmed, NULL, 0 );
     }
     else
     {
-        HAL_DBG_TRACE_INFO( "DUTY CYCLE, NEXT UPLINK AVAIABLE in %d milliseconds \r\n\r\n", duty_cycle );
+        modem_response_code =
+            lr1110_modem_request_tx( &lr1110, LORAWAN_APP_PORT, tx_confirmed, tx_frame_buffer, tx_frame_buffer_size );
+    }
+
+    if( modem_response_code == LR1110_MODEM_RESPONSE_CODE_OK )
+    {
+        HAL_DBG_TRACE_INFO( "LR1110 MODEM-E REQUEST TX \r\n\r\n" );
+
+        return true;
+    }
+    else
+    {
+        HAL_DBG_TRACE_ERROR( "LR1110 MODEM-E REQUEST TX ERROR CMD, modem_response_code : %d \r\n\r\n",
+                             modem_response_code );
 
         return false;
     }
 }
 
-static void on_led_tx_timer_event( void* context )
-{
-    timer_stop( &led_tx_timer );
-    /* Switch LED TX OFF */
-    leds_off( LED_TX_MASK );
-}
-
-static void on_led_rx_timer_event( void* context )
-{
-    timer_stop( &led_rx_timer );
-    /* Switch LED RX OFF */
-    leds_off( LED_RX_MASK );
-}
-
 static void lr1110_modem_reset_event( uint16_t reset_count )
 {
-    HAL_DBG_TRACE_INFO( "###### ===== LR1110 MODEM RESET %lu ==== ######\r\n\r\n", reset_count );
+    HAL_DBG_TRACE_INFO( "###### ===== LR1110 MODEM-E RESET %lu ==== ######\r\n\r\n", reset_count );
 
     if( lr1110_modem_board_is_ready( ) == true )
     {
@@ -676,42 +488,6 @@ void lr1110_modem_network_joined( void )
 }
 
 void lr1110_modem_join_fail( void ) { HAL_DBG_TRACE_INFO( "###### ===== JOINED FAIL ==== ######\r\n\r\n" ); }
-
-static void modem_status_to_string( lr1110_modem_status_t modem_status )
-{
-    HAL_DBG_TRACE_MSG( "Modem status : " );
-
-    if( ( modem_status & LR1110_LORAWAN_CRASH ) == LR1110_LORAWAN_CRASH )
-    {
-        HAL_DBG_TRACE_MSG( "CRASH " );
-    }
-    if( ( modem_status & LR1110_LORAWAN_MUTE ) == LR1110_LORAWAN_MUTE )
-    {
-        HAL_DBG_TRACE_MSG( "MUTE " );
-    }
-    if( ( modem_status & LR1110_LORAWAN_JOINED ) == LR1110_LORAWAN_JOINED )
-    {
-        HAL_DBG_TRACE_MSG( "JOINED " );
-    }
-    if( ( modem_status & LR1110_LORAWAN_SUSPEND ) == LR1110_LORAWAN_SUSPEND )
-    {
-        HAL_DBG_TRACE_MSG( "SUSPEND " );
-    }
-    if( ( modem_status & LR1110_LORAWAN_UPLOAD ) == LR1110_LORAWAN_UPLOAD )
-    {
-        HAL_DBG_TRACE_MSG( "UPLOAD " );
-    }
-    if( ( modem_status & LR1110_LORAWAN_JOINING ) == LR1110_LORAWAN_JOINING )
-    {
-        HAL_DBG_TRACE_MSG( "JOINING " );
-    }
-    if( ( modem_status & LR1110_LORAWAN_STREAM ) == LR1110_LORAWAN_STREAM )
-    {
-        HAL_DBG_TRACE_MSG( "STREAM " );
-    }
-
-    HAL_DBG_TRACE_MSG( "\r\n\r\n" );
-}
 
 void lr1110_modem_alarm( void )
 {
@@ -756,17 +532,19 @@ void lr1110_modem_alarm( void )
 
 void lr1110_modem_tx_done( lr1110_modem_tx_done_event_t status )
 {
+    static uint32_t uplink_cnt = 0;
+
     if( status != LR1110_MODEM_TX_ERROR )
     {
         HAL_DBG_TRACE_INFO( "###### ===== UPLINK FRAME %lu ==== ######\r\n\r\n", uplink_cnt++ );
 
-        HAL_DBG_TRACE_MSG( "CLASS       : A\r\n" );
-        HAL_DBG_TRACE_PRINTF( "TX PORT     : %d\r\n", app_port );
+        HAL_DBG_TRACE_PRINTF( "CLASS       : %c\r\n", ( LORAWAN_CLASS_USED == LR1110_LORAWAN_CLASS_A ) ? 'A' : 'C' );
+        HAL_DBG_TRACE_PRINTF( "TX PORT     : %d\r\n", LORAWAN_APP_PORT );
 
         if( app_data_size != 0 )
         {
             HAL_DBG_TRACE_MSG( "TX DATA     : " );
-            if( is_tx_confirmed )
+            if( LORAWAN_CONFIRMED_MSG_ON )
             {
                 HAL_DBG_TRACE_PRINTF( "CONFIRMED - %s\r\n", ( status == LR1110_MODEM_CONFIRMED_TX ) ? "ACK" : "NACK" );
             }
@@ -779,8 +557,7 @@ void lr1110_modem_tx_done( lr1110_modem_tx_done_event_t status )
             HAL_DBG_TRACE_MSG( "\r\n" );
         }
 
-        leds_on( LED_TX_MASK );
-        timer_start( &led_tx_timer );
+        lr1110_modem_board_led_pulse( LED_TX_MASK, true, LED_PERIOD_MS );
     }
     else
     {
@@ -791,6 +568,8 @@ void lr1110_modem_tx_done( lr1110_modem_tx_done_event_t status )
 static void lr1110_modem_down_data( int8_t rssi, int8_t snr, lr1110_modem_down_data_flag_t flags, uint8_t port,
                                     const uint8_t* payload, uint8_t size )
 {
+    static uint32_t downlink_cnt = 0;
+
     HAL_DBG_TRACE_INFO( "###### ===== DOWNLINK FRAME %lu ==== ######\r\n\r\n", downlink_cnt++ );
 
     HAL_DBG_TRACE_PRINTF( "RX WINDOW   : %d\r\n",
@@ -807,10 +586,9 @@ static void lr1110_modem_down_data( int8_t rssi, int8_t snr, lr1110_modem_down_d
     HAL_DBG_TRACE_PRINTF( "RX RSSI     : %d\r\n", rssi );
     HAL_DBG_TRACE_PRINTF( "RX SNR      : %d\r\n\r\n", snr );
 
-    leds_on( LED_RX_MASK );
-    timer_start( &led_rx_timer );
+    lr1110_modem_board_led_pulse( LED_RX_MASK, true, LED_PERIOD_MS );
 
-    parse_frame( port, payload, size );
+    parse_downlink_frame( port, payload, size );
 }
 
 static void lr1110_modem_mute( lr1110_modem_mute_t mute )
@@ -825,28 +603,9 @@ static void lr1110_modem_mute( lr1110_modem_mute_t mute )
     }
 }
 
-static void lr1110_modem_set_conf( uint8_t infor_tag )
+static void lr1110_modem_set_conf( lr1110_modem_event_setconf_tag_t tag )
 {
-    HAL_DBG_TRACE_INFO( "###### ===== MODEM SET CONF %02X ==== ######\r\n\r\n", infor_tag );
-}
-
-static void lr1110_modem_stream_done( void )
-{
-    HAL_DBG_TRACE_INFO( "###### ===== STREAM DONE nb %d ==== ######\r\n\r\n" );
-}
-
-static void lr1110_modem_time_updated_alc_sync( lr1110_modem_alc_sync_state_t alc_sync_state )
-{
-    HAL_DBG_TRACE_INFO( "###### ===== APPLICATION LAYER CLOCK SYNC EVENT ==== ######\r\n\r\n" );
-
-    if( alc_sync_state == LR1110_MODEM_ALC_SYNC_SYNCHRONIZED )
-    {
-        HAL_DBG_TRACE_MSG( "CLOCK SYNC STATE SYNCHRONIZED\r\n" );
-    }
-    else
-    {
-        HAL_DBG_TRACE_MSG( "CLOCK SYNC STATE DESYNCHRONIZED\r\n" );
-    }
+    HAL_DBG_TRACE_INFO( "###### ===== MODEM SET CONF %02X ==== ######\r\n\r\n", tag );
 }
 
 static void lr1110_modem_adr_mobile_to_static( void )
@@ -858,7 +617,7 @@ static void lr1110_modem_new_link_adr( void ) { HAL_DBG_TRACE_INFO( "###### ====
 
 static void lr1110_modem_no_event( void ) { HAL_DBG_TRACE_INFO( "###### ===== NO EVENT ==== ######\r\n\r\n" ); }
 
-static void parse_frame( uint8_t port, const uint8_t* payload, uint8_t size )
+static void parse_downlink_frame( uint8_t port, const uint8_t* payload, uint8_t size )
 {
     switch( port )
     {
@@ -877,18 +636,14 @@ static void parse_frame( uint8_t port, const uint8_t* payload, uint8_t size )
             {
             case SET_RX_LED_CMD:
             {
-                /* Wait the end of the rx led timer */
-                HAL_Delay( 25 );
-
                 if( payload[payload_index] == 1 )
                 {
-                    leds_on( LED_RX_MASK );
+                    lr1110_modem_board_led_set( LED_RX_MASK, true );
                 }
                 else
                 {
-                    leds_off( LED_RX_MASK );
+                    lr1110_modem_board_led_set( LED_RX_MASK, false );
                 }
-
                 payload_index += len;
                 break;
             }
@@ -897,10 +652,114 @@ static void parse_frame( uint8_t port, const uint8_t* payload, uint8_t size )
                 break;
             }
         }
+        break;
     }
     default:
         break;
     }
 }
+
+lr1110_modem_response_code_t lorawan_init( lr1110_modem_regions_t region, lr1110_modem_classes_t lorawan_class )
+{
+    lr1110_modem_dm_info_fields_t dm_info_fields;
+    lr1110_modem_response_code_t  modem_response_code = LR1110_MODEM_RESPONSE_CODE_OK;
+
+    modem_response_code |= lr1110_modem_set_class( &lr1110, lorawan_class );
+
+    if( lorawan_class == LR1110_LORAWAN_CLASS_A )
+    {
+        HAL_DBG_TRACE_MSG( "CLASS       : A\r\n" );
+    }
+    if( lorawan_class == LR1110_LORAWAN_CLASS_C )
+    {
+        HAL_DBG_TRACE_MSG( "CLASS       : C\r\n" );
+    }
+
+    modem_response_code |= lr1110_modem_set_region( &lr1110, region );
+
+    switch( region )
+    {
+    case LR1110_LORAWAN_REGION_EU868:
+    {
+        HAL_DBG_TRACE_MSG( "REGION      : EU868\r\n\r\n" );
+        modem_response_code |= lr1110_modem_activate_duty_cycle( &lr1110, LORAWAN_DUTYCYCLE_ON );
+        break;
+    }
+    case LR1110_LORAWAN_REGION_US915:
+    {
+        HAL_DBG_TRACE_MSG( "REGION      : US915\r\n\r\n" );
+        break;
+    }
+    case LR1110_LORAWAN_REGION_AU915:
+    {
+        HAL_DBG_TRACE_MSG( "REGION      : AU915\r\n\r\n" );
+        break;
+    }
+    case LR1110_LORAWAN_REGION_AS923_GRP1:
+    {
+        if( LORAWAN_COUNTRY_JAPAN == 1 )
+        {
+            HAL_DBG_TRACE_MSG( "LBT         : ACTIVATE LBT\r\n" );
+            /* Activate LBT for 5ms before each transmission with a threshold at -80 dBm */
+            modem_response_code |= lr1110_modem_activate_lbt( &lr1110, LR1110_MODEM_LBT_MODE_ENABLE, -80, 5, 1250000 );
+        }
+
+        HAL_DBG_TRACE_MSG( "REGION      : AS923_GRP1\r\n\r\n" );
+        break;
+    }
+    case LR1110_LORAWAN_REGION_CN470:
+    {
+        HAL_DBG_TRACE_MSG( "REGION      : CN470\r\n\r\n" );
+        break;
+    }
+    case LR1110_LORAWAN_REGION_AS923_GRP2:
+    {
+        HAL_DBG_TRACE_MSG( "REGION      : AS923_GRP2\r\n\r\n" );
+        break;
+    }
+    case LR1110_LORAWAN_REGION_AS923_GRP3:
+    {
+        HAL_DBG_TRACE_MSG( "REGION      : AS923_GRP3\r\n\r\n" );
+        break;
+    }
+    case LR1110_LORAWAN_REGION_IN865:
+    {
+        HAL_DBG_TRACE_MSG( "REGION      : IN865\r\n\r\n" );
+        break;
+    }
+    case LR1110_LORAWAN_REGION_KR920:
+    {
+        HAL_DBG_TRACE_MSG( "LBT         : ACTIVATE LBT\r\n" );
+        HAL_DBG_TRACE_MSG( "REGION      : KR920\r\n\r\n" );
+
+        /* Activate LBT for 5ms before each transmission with a threshold at -65 dBm */
+        modem_response_code |= lr1110_modem_activate_lbt( &lr1110, LR1110_MODEM_LBT_MODE_ENABLE, -65, 5, 1250000 );
+        break;
+    }
+    case LR1110_LORAWAN_REGION_RU864:
+    {
+        HAL_DBG_TRACE_MSG( "REGION      : RU864\r\n\r\n" );
+        break;
+    }
+    default:
+        HAL_DBG_TRACE_ERROR( "No supported region selected\r\n\r\n" );
+        break;
+    }
+
+    /* Set DM info field */
+    dm_info_fields.dm_info_field[0] = LR1110_MODEM_DM_INFO_TYPE_CHARGE;
+    dm_info_fields.dm_info_field[1] = LR1110_MODEM_DM_INFO_TYPE_TEMPERATURE;
+    dm_info_fields.dm_info_length   = 2;
+
+    modem_response_code |= lr1110_modem_set_dm_info_field( &lr1110, &dm_info_fields );
+
+    modem_response_code |= lr1110_modem_set_dm_info_interval( &lr1110, LR1110_MODEM_REPORTING_INTERVAL_IN_DAY, 1 );
+
+    return modem_response_code;
+}
+
+/*!
+ * @}
+ */
 
 /* --- EOF ------------------------------------------------------------------ */

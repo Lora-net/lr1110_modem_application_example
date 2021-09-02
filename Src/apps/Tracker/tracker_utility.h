@@ -29,8 +29,8 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef __TRACKER_UTILITY_H__
-#define __TRACKER_UTILITY_H__
+#ifndef TRACKER_UTILITY_H
+#define TRACKER_UTILITY_H
 
 #ifdef __cplusplus
 extern "C" {
@@ -54,10 +54,25 @@ extern "C" {
  * -----------------------------------------------------------------------------
  * --- PUBLIC CONSTANTS --------------------------------------------------------
  */
-#define WIFI_SINGLE_BEACON_LEN 0x07
 
-/* TRACKER_ALL_SETTINGS_REQ version */
-#define TRACKER_ALL_SETTINGS_REQ_VERSION 0x01
+/* Internal Log Tag */
+#define TAG_GNSS 0x01
+#define TAG_WIFI 0x03
+#define TAG_NEXT_SCAN 0x04
+
+/* Internal Log Len */
+#define WIFI_SINGLE_BEACON_LEN 0x08
+#define WIFI_TIMING_LEN 0x10
+#define GNSS_TIMING_LEN 0x08
+
+/* Internal Log Activation */
+#define GNSS_LOG_ACTIVATED 1
+#define WIFI_LOG_ACTIVATED 1
+
+/* Internal Log display settings */
+#define GNSS_DISPLAY_LOG_ACTIVATED 1
+#define WIFI_DISPLAY_LOG_ACTIVATED 1
+#define PAYLOAD_DISPLAY_LOG_ACTIVATED 0
 
 /* Tracker application commands */
 
@@ -115,6 +130,10 @@ extern "C" {
 #define GET_LORAWAN_CHIP_EUI_CMD 0x44
 #define GET_LORAWAN_CHIP_EUI_LEN 0x00
 #define GET_LORAWAN_CHIP_EUI_ANSWER_LEN 0x08
+#define SET_LORAWAN_DUTY_CYCLE_CMD 0x47
+#define SET_LORAWAN_DUTY_CYCLE_LEN 0x01
+#define GET_LORAWAN_DUTY_CYCLE_CMD 0x48
+#define GET_LORAWAN_DUTY_CYCLE_LEN 0x00
 #define GET_LORAWAN_DUTY_CYCLE_ANSWER_LEN 0x01
 #define GET_LORAWAN_NB_UPLINK_SINCE_LAST_DOWNLINK_CMD 0x50
 #define GET_LORAWAN_NB_UPLINK_SINCE_LAST_DOWNLINK_LEN 0x00
@@ -212,11 +231,21 @@ extern "C" {
 #define GET_APP_KEEP_ALINE_FRAME_INTERVAL_ANSWER_LEN 0x02
 #define SET_APP_RESET_CMD 0x2B
 #define SET_APP_RESET_LEN 0x00
-#define SET_GNSS_ONLY_IF_WIFI_GOOD_ENOUGH_CMD 0x3C
-#define SET_GNSS_ONLY_IF_WIFI_GOOD_ENOUGH_LEN 0x01
-#define GET_GNSS_ONLY_IF_WIFI_GOOD_ENOUGH_CMD 0x3D
-#define GET_GNSS_ONLY_IF_WIFI_GOOD_ENOUGH_LEN 0x00
-#define GET_GNSS_ONLY_IF_WIFI_GOOD_ENOUGH_ANSWER_LEN 0x01
+#define SET_SCAN_PRIORITY_CMD 0x3C
+#define SET_SCAN_PRIORITY_LEN 0x01
+#define GET_SCAN_PRIORITY_CMD 0x3D
+#define GET_SCAN_PRIORITY_LEN 0x00
+#define GET_SCAN_PRIORITY_ANSWER_LEN 0x01
+#define SET_APP_FLUSH_INTERNAL_LOG_CMD 0x2A
+#define SET_APP_FLUSH_INTERNAL_LOG_LEN 0x00
+#define SET_APP_INTERNAL_LOG_CMD 0x41
+#define SET_APP_INTERNAL_LOG_LEN 0x01
+#define GET_APP_INTERNAL_LOG_CMD 0x42
+#define GET_APP_INTERNAL_LOG_LEN 0x00
+#define GET_APP_INTERNAL_LOG_ANSWER_LEN 0x01
+#define GET_APP_INTERNAL_LOG_REMANING_SPACE_CMD 0x49
+#define GET_APP_INTERNAL_LOG_REMANING_SPACE_LEN 0x00
+#define GET_APP_INTERNAL_LOG_REMANING_SPACE_ANSWER_LEN 0x01
 #define GET_APP_ACCUMULATED_CHARGE_CMD 0x4A
 #define GET_APP_ACCUMULATED_CHARGE_LEN 0x00
 #define GET_APP_ACCUMULATED_CHARGE_ANSWER_LEN 0x04
@@ -226,9 +255,15 @@ extern "C" {
 #define GET_APP_TRACKER_SETTINGS_LEN 0x00
 #define GET_APP_TRACKER_SETTINGS_ANSWER_LEN 0x37
 #define GET_APP_TRACKER_SETTINGS_VERSION 0x01
+#define GET_APP_RESET_COUNTER_CMD 0x4D
+#define GET_APP_RESET_COUNTER_LEN 0x00
+#define GET_APP_RESET_COUNTER_ANSWER_LEN 0x06
+#define RESET_APP_RESET_COUNTER_CMD 0x4E
+#define RESET_APP_RESET_COUNTER_LEN 0x00
 #define GET_APP_SYSTEM_SANITY_CHECK_CMD 0x53
 #define GET_APP_SYSTEM_SANITY_CHECK_LEN 0x00
 #define GET_APP_SYSTEM_SANITY_CHECK_ANSWER_LEN 0x01
+
 /*
  * -----------------------------------------------------------------------------
  * --- PUBLIC TYPES ------------------------------------------------------------
@@ -245,15 +280,14 @@ typedef enum
 } tracker_system_sanity_check_mask_t;
 
 /*!
- * @brief Tracker payload build mask
+ * @brief Tracker system sanity check mask
  */
 typedef enum
 {
-    TRACKER_GNSS_PAYLOAD    = 0x0001,
-    TRACKER_WIFI_PAYLOAD    = 0x0002,
-    TRACKER_SENSORS_PAYLOAD = 0x0004,
-    TRACKER_ALL_PAYLOAD     = 0x0007
-} tracker_payload_mask_t;
+    TRACKER_GNSS_PRIORITY = 0x00,  //!< Means that GNSS scan has the priority
+    TRACKER_WIFI_PRIORITY = 0x01,  //!< Means that Wi-Fi scan has the priority
+    TRACKER_NO_PRIORITY   = 0x02,  //!< Means no priority, GNSS and Wi-Fi are performed
+} tracker_scan_priority_t;
 
 /*!
  * @brief Tracker context structure
@@ -266,6 +300,9 @@ typedef struct
     /* Indicates if a date has been set */
     bool has_date;
 
+    /* Context */
+    uint8_t tracker_context_empty;
+
     /* Board */
     uint16_t voltage;
 
@@ -275,10 +312,11 @@ typedef struct
     uint8_t                     app_key[16];
     uint8_t                     chip_eui[8];
     uint32_t                    lorawan_pin;
-    lr1110_modem_regions_t      lorawan_region;
     bool                        lorawan_parameters_have_changed;
+    lr1110_modem_regions_t      lorawan_region;
     bool                        use_semtech_join_server;
     lr1110_modem_adr_profiles_t lorawan_adr_profile;
+    bool                        duty_cycle_enable;
 
     /* Modem version information */
     lr1110_modem_version_t modem_version;
@@ -297,15 +335,21 @@ typedef struct
     uint8_t                            accelerometer_move_history;
     bool                               send_alive_frame;
     bool                               stream_done;
-    bool                               gnss_scan_if_wifi_not_good_enough;
+    bool                               airplane_mode;
+    tracker_scan_priority_t            scan_priority;
+    bool                               internal_log_enable;
     uint8_t                            tracker_settings_payload_len;
     uint8_t                            tracker_settings_payload[242];
+    uint16_t                           host_reset_cnt;
+    uint16_t                           modem_reset_by_itself_cnt;
+    bool                               reset_cnt_sent;
     tracker_system_sanity_check_mask_t system_sanity_check;
-    tracker_payload_mask_t             payload_mask;
+
+    bool new_value_to_set;
 
     /* Results values */
-    uint8_t                     lorawan_payload_len;
-    uint8_t                     lorawan_payload[242];
+    uint16_t                    lorawan_payload_len;
+    uint8_t                     lorawan_payload[500];
     uint32_t                    next_frame_ctn;
     gnss_scan_single_result_t   gnss_scan_result;
     uint8_t                     last_nb_detected_satellites;
@@ -314,8 +358,18 @@ typedef struct
     int16_t                     accelerometer_x;
     int16_t                     accelerometer_y;
     int16_t                     accelerometer_z;
-    int16_t                     tout;
+    int16_t                     temperature;
     uint32_t                    charge;
+    uint32_t                    accumulated_charge;
+
+    /* parameters for flash read/write operations */
+    bool     internal_log_flush_request;
+    uint8_t  internal_log_empty;
+    uint16_t nb_scan;
+    uint32_t flash_addr_start;
+    uint32_t flash_addr_end;
+    uint32_t flash_addr_current;
+    uint32_t flash_remaining_space;
 } tracker_ctx_t;
 
 /*
@@ -324,28 +378,98 @@ typedef struct
  */
 
 /*!
+ * @brief Init and store the tracker internal log context in the flash memory in the dedicated memory zone
+ *
+ * @param [out] SMTC_SUCESS/SMTC_FAIL
+ */
+uint8_t tracker_init_internal_log_ctx( void );
+
+/*!
+ * @brief Store the internal log context in the flash memory in the dedicated memory zone
+ */
+void tracker_store_internal_log_ctx( void );
+
+/*!
+ * @brief Restore the internal log context from the flash memory and set in /ref FieldTest_t structure
+ *
+ * @note if SMTC_FAIL is returned call init_field_test_ctx
+ *
+ * @returns SMTC_SUCESS/SMTC_FAIL
+ */
+uint8_t tracker_restore_internal_log_ctx( void );
+
+/*!
+ * @brief Store the Tracker context in the flash memory in the dedicated memory zone
+ *
+ */
+void tracker_store_app_ctx( void );
+
+/*!
  * @brief Init the Tracker context
  *
  * @param [in] dev_eui LoRaWAN Device Eui
  * @param [in] join_eui LoRaWAN Join Eui
  * @param [in] app_key LoRaWAN Application Key
+ * @param [in] store_in_flash store the context in flash
  */
-void tracker_init_app_ctx( uint8_t* dev_eui, uint8_t* join_eui, uint8_t* app_key );
+void tracker_init_app_ctx( uint8_t* dev_eui, uint8_t* join_eui, uint8_t* app_key, bool store_in_flash );
+
+/*!
+ * @brief Restore the Tracker context from the flash memory and set in /ref Tracker_t structure
+ *
+ * @param [out] SMTC_SUCESS/SMTC_FAIL
+ */
+uint8_t tracker_restore_app_ctx( void );
+
+/*!
+ * @brief Store the scan result in the flash memory in the dedicated user memory zone
+ */
+void tracker_store_internal_log( void );
+
+/*!
+ * @brief Restore the logs results from the flash memory, parse and display it
+ */
+void tracker_restore_internal_log( void );
+
+/*!
+ * @brief Erase the scan results and the internal log context from the flash memory
+ */
+void tracker_erase_internal_log( void );
+
+/*!
+ * @brief Erase the internal log et create a new internal log context.
+ */
+void tracker_reset_internal_log( void );
+
+/*!
+ * @brief return the user memory flash remaning space.
+ *
+ * @returns the user memory flash remaning space in percentage
+ */
+uint8_t tracker_get_remaining_memory_space( void );
 
 /*!
  * @brief Parse the commands coming from outside.
  *
  * @param [in] payload payload to parse
  * @param [in] buffer_out answer output buffer
+ * @param [in] all_command_enable activate or no all the commands
  *
  * @returns size of buffer_out
  */
-uint8_t tracker_parse_cmd( uint8_t* payload, uint8_t* buffer_out );
+uint8_t tracker_parse_cmd( uint8_t* payload, uint8_t* buffer_out, bool all_commands_enable );
+
+/*!
+ * @brief store reset counters and reset the tracker
+ *
+ * @param [in] host_reset_cnt_to_add value to add to host_reset_cnt_to_add paramater
+ */
+void tracker_store_and_reset( uint8_t host_reset_cnt_to_add );
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif  // __TRACKER_UTILITY_H__
+#endif  // TRACKER_UTILITY_H
 
 /* --- EOF ------------------------------------------------------------------ */

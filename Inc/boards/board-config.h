@@ -29,8 +29,8 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef __BOARD_CONFIG_H__
-#define __BOARD_CONFIG_H__
+#ifndef BOARD_CONFIG_H
+#define BOARD_CONFIG_H
 
 #ifdef __cplusplus
 extern "C" {
@@ -54,11 +54,7 @@ extern "C" {
 /*!
  * @brief Defines the time required for the TCXO to wakeup [ms].
  */
-#if defined( LR1110EVK )
 #define BOARD_TCXO_WAKEUP_TIME 5
-#else
-#define BOARD_TCXO_WAKEUP_TIME 0
-#endif
 
 /*!
  * @brief Board MCU pins definitions
@@ -112,6 +108,6 @@ extern "C" {
 }
 #endif
 
-#endif  // __BOARD_CONFIG_H__
+#endif  // BOARD_CONFIG_H
 
 /* --- EOF ------------------------------------------------------------------ */

@@ -28,8 +28,8 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-#ifndef __SMTC_HAL_MCU_H__
-#define __SMTC_HAL_MCU_H__
+#ifndef SMTC_HAL_MCU_H
+#define SMTC_HAL_MCU_H
 
 #ifdef __cplusplus
 extern "C" {
@@ -65,7 +65,7 @@ extern "C" {
  * --- PUBLIC CONSTANTS --------------------------------------------------------
  */
 
-#define ACCELEROMETER_MOUNTED    1
+#define ACCELEROMETER_MOUNTED 1
 
 /*
  * -----------------------------------------------------------------------------
@@ -157,7 +157,6 @@ uint16_t hal_mcu_get_vref_level( void );
  */
 int16_t hal_mcu_get_temperature( void );
 
-
 /*!
  * @brief Prints debug trace
  *
@@ -218,6 +217,6 @@ void hal_mcu_reset_software_watchdog( void );
 }
 #endif
 
-#endif  // __SMTC_HAL_MCU_H__
+#endif  // SMTC_HAL_MCU_H
 
 /* --- EOF ------------------------------------------------------------------ */

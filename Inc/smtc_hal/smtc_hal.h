@@ -29,8 +29,8 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef __SMTC_HAL_H__
-#define __SMTC_HAL_H__
+#ifndef SMTC_HAL_H
+#define SMTC_HAL_H
 
 #ifdef __cplusplus
 extern "C" {
@@ -54,6 +54,7 @@ extern "C" {
 #include "smtc_hal_gpio.h"
 #include "smtc_hal_spi.h"
 #include "smtc_hal_uart.h"
+#include "smtc_hal_flash.h"
 #include "smtc_hal_i2c.h"
 
 #include "board-config.h"
@@ -87,6 +88,6 @@ extern "C" {
 }
 #endif
 
-#endif  // __SMTC_HAL_H__
+#endif  // SMTC_HAL_H
 
 /* --- EOF ------------------------------------------------------------------ */

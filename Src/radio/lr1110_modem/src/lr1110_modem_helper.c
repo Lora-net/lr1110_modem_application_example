@@ -35,7 +35,6 @@
  */
 
 #include "lr1110_modem_helper.h"
-#include "lr1110_modem_lorawan.h"
 
 /*
  * -----------------------------------------------------------------------------
@@ -223,6 +222,75 @@ lr1110_modem_helper_status_t lr1110_modem_helper_gnss_get_event_type( const uint
                 *event_type = LR1110_MODEM_GNSS_SCAN_DONE_ALMANAC_TOO_OLD;
                 break;
             }
+        }
+    }
+
+    return status;
+}
+
+lr1110_modem_helper_status_t lr1110_modem_helper_get_event_data( const void*           context,
+                                                                 lr1110_modem_event_t* modem_event )
+{
+    lr1110_modem_helper_status_t status              = LR1110_MODEM_HELPER_STATUS_ERROR;
+    lr1110_modem_response_code_t modem_response_code = LR1110_MODEM_RESPONSE_CODE_OK;
+    lr1110_modem_event_fields_t  event_fields;
+
+    modem_response_code = lr1110_modem_get_event( context, &event_fields );
+
+    if( modem_response_code == LR1110_MODEM_RESPONSE_CODE_OK )
+    {
+        status                     = LR1110_MODEM_HELPER_STATUS_OK;
+        modem_event->event_type    = event_fields.event_type;
+        modem_event->missed_events = event_fields.missed_events_count;
+
+        switch( modem_event->event_type )
+        {
+        case LR1110_MODEM_LORAWAN_EVENT_RESET:
+            modem_event->event_data.reset.count = ( ( uint16_t ) event_fields.buffer[0] << 8 ) + event_fields.buffer[1];
+            break;
+        case LR1110_MODEM_LORAWAN_EVENT_TX_DONE:
+            modem_event->event_data.txdone.status = ( lr1110_modem_tx_done_event_t ) event_fields.buffer[0];
+            break;
+        case LR1110_MODEM_LORAWAN_EVENT_DOWN_DATA:
+            modem_event->event_data.downdata.rssi  = ( ( int8_t ) event_fields.buffer[0] ) - 64;
+            modem_event->event_data.downdata.snr   = ( ( ( int8_t ) event_fields.buffer[1] ) >> 2 );
+            modem_event->event_data.downdata.flag  = ( lr1110_modem_down_data_flag_t ) event_fields.buffer[2];
+            modem_event->event_data.downdata.fport = event_fields.buffer[3];
+            modem_event->event_data.downdata.length =
+                event_fields.buffer_len - 4;  // remove rssi/snr/flag and fport from buffer
+            for( uint8_t i = 0; i < modem_event->event_data.downdata.length; i++ )
+            {
+                modem_event->event_data.downdata.data[i] = event_fields.buffer[i + 4];
+            }
+            break;
+        case LR1110_MODEM_LORAWAN_EVENT_UPLOAD_DONE:
+            modem_event->event_data.upload.status = ( lr1110_modem_upload_event_t ) event_fields.buffer[0];
+            break;
+        case LR1110_MODEM_LORAWAN_EVENT_SET_CONF:
+            modem_event->event_data.setconf.tag = ( lr1110_modem_event_setconf_tag_t ) event_fields.buffer[0];
+            break;
+        case LR1110_MODEM_LORAWAN_EVENT_MUTE:
+            modem_event->event_data.mute.status = ( lr1110_modem_mute_t ) event_fields.buffer[0];
+            break;
+        case LR1110_MODEM_LORAWAN_EVENT_WIFI_SCAN_DONE:
+            modem_event->event_data.wifi.len = event_fields.buffer_len;
+            for( uint16_t i = 0; i < event_fields.buffer_len; i++ )
+            {
+                modem_event->event_data.wifi.buffer[i] = event_fields.buffer[i];
+            }
+            break;
+        case LR1110_MODEM_LORAWAN_EVENT_GNSS_SCAN_DONE:
+            modem_event->event_data.gnss.len = event_fields.buffer_len;
+            for( uint16_t i = 0; i < event_fields.buffer_len; i++ )
+            {
+                modem_event->event_data.gnss.nav_message[i] = event_fields.buffer[i];
+            }
+            break;
+        case LR1110_MODEM_LORAWAN_EVENT_TIME_UPDATED_ALC_SYNC:
+            modem_event->event_data.time.status = ( lr1110_modem_alc_sync_state_t ) event_fields.buffer[0];
+            break;
+        default:
+            break;
         }
     }
 

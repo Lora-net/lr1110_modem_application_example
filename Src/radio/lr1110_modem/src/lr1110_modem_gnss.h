@@ -416,6 +416,9 @@ lr1110_modem_response_code_t lr1110_modem_gnss_set_assistance_position(
 /*!
  * @brief Function to read the assistance position.
  *
+ * The assistance position read may be different from the one set beforehand
+ * with lr1110_modem_gnss_set_assistance_position due to a scaling computation.
+ *
  * @param [in] context Chip implementation context
  * @param [out] assistance_position latitude 12 bits and longitude 12 bits @ref
  * lr1110_modem_gnss_solver_assistance_position_t

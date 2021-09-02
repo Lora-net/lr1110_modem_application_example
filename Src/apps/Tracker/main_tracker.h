@@ -1,10 +1,13 @@
 /*!
+ * @ingroup   apps_tracker
  * @file      main_tracker.h
  *
- * @brief     lr1110 Modem Tracker Application definition
+ * @brief     lr1110 Modem-E Tracker Application definition
  *
+ * @copyright
+ * @parblock
  * Revised BSD License
- * Copyright Semtech Corporation 2020. All rights reserved.
+ * Copyright Semtech Corporation 2021. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
@@ -27,14 +30,21 @@
  * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * @endparblock
  */
 
-#ifndef __MAIN_TRACKER_H__
-#define __MAIN_TRACKER_H__
+#ifndef MAIN_TRACKER_H
+#define MAIN_TRACKER_H
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+/*!
+ * @addtogroup apps_tracker
+ * LR1110 Modem-E Tracker Application
+ * @{
+ */
 
 /*
  * -----------------------------------------------------------------------------
@@ -51,11 +61,27 @@ extern "C" {
  * --- PUBLIC CONSTANTS --------------------------------------------------------
  */
 
+/*
+ * *****************************************************************************
+ * *** Application Configuration ***********************************************
+ */
+
+/*!
+ * @brief Defines the duty cycle threshold where the application will not send the results, results will be only logged
+ * into flash memory if internal log is enable, 4.5s , value in [ms].
+ */
+#define TRACKER_DUTY_CYCLE_THRESHOLD 4500
+
+/*!
+ * @brief Defines the stream redundancy rate of the tracker application
+ */
+#define TRACKER_STREAM_REDUNDANCY_RATE 110
+
 /*!
  * @brief Defines the application scan interval
- * when device has moved, 300s (5min), value in [ms].
+ * when device has moved, 120s (2min), value in [ms].
  */
-#define TRACKER_SCAN_INTERVAL 300000
+#define TRACKER_SCAN_INTERVAL 120000
 
 /*!
  * @brief Defines the application keep alive frame interval
@@ -73,18 +99,36 @@ extern "C" {
  * @brief Defines the application firmware version
  */
 #define TRACKER_MAJOR_APP_VERSION 1
-#define TRACKER_MINOR_APP_VERSION 4
-#define TRACKER_SUB_MINOR_APP_VERSION 1
+#define TRACKER_MINOR_APP_VERSION 5
+#define TRACKER_SUB_MINOR_APP_VERSION 0
+
+/*!
+ * @brief Time during which an LED is turned on when a TX or RX event occurs, in milliseconds.
+ */
+#define LED_PERIOD_MS 250
 
 /*!
  * @brief LoRaWAN application TLV Tag
  */
-#define TAG_NAV 0x07
-#define TAG_WIFI_SCAN 0x08
-#define TAG_ACCELEROMETER 0x09
-#define TAG_CHARGE 0x0A
-#define TAG_VOLTAGE 0x0B
-#define TAG_TRACKER_SETTINGS 0x4C
+#define TLV_GNSS_NAV_TAG 0x07
+#define TLV_WIFI_SCAN_TAG 0x0E
+#define TLV_RESET_COUNTER_TAG 0x0C
+#define TLV_SENSORS_TAG 0x0D
+#define TLV_TRACKER_SETTINGS_TAG 0x4C
+
+/*!
+ * @brief LoRaWAN application TLV Len
+ */
+#define TLV_WIFI_SINGLE_BEACON_LEN 0x07
+#define TLV_SENSOR_BASIC_VERSION_LEN 0x01
+#define TLV_SENSOR_FULL_VERSION_LEN 0x07
+
+/*!
+ * @brief LoRaWAN application TLV Sensors version
+ */
+#define TLV_WIFI_VERSION 0x01
+#define TLV_SENSOR_BASIC_VERSION 0x00
+#define TLV_SENSOR_FULL_VERSION 0x01
 
 /*!
  * @brief LoRaWAN stream application port
@@ -107,15 +151,81 @@ extern "C" {
 #define SET_RX_LED_CMD 0x4F
 #define SET_RX_LED_LEN 0x01
 
+/*!
+ * @brief Define the number of time where the tracker send a scan result once static
+ */
+#define TRACKER_SEND_ONE_MORE_SCANS_ONCE_STATIC 0x03
+#define TRACKER_SEND_TWO_MORE_SCANS_ONCE_STATIC 0x07
+#define TRACKER_SEND_THRE_MORE_SCANS_ONCE_STATIC 0x0F
+
+/*
+ * -----------------------------------------------------------------------------
+ * --- PUBLIC CONSTANTS (LoRaWAN configuration) --------------------------------
+ */
+
+/*!
+ * @brief LoRaWAN regulatory region.
+ * One of:
+ * LR1110_LORAWAN_REGION_EU868
+ * LR1110_LORAWAN_REGION_US915
+ * LR1110_LORAWAN_REGION_AU915
+ * LR1110_LORAWAN_REGION_AS923_GRP1
+ * LR1110_LORAWAN_REGION_CN470
+ * LR1110_LORAWAN_REGION_AS923_GRP2
+ * LR1110_LORAWAN_REGION_AS923_GRP3
+ * LR1110_LORAWAN_REGION_IN865
+ * LR1110_LORAWAN_REGION_KR920
+ * LR1110_LORAWAN_REGION_RU864
+ */
+#define LORAWAN_REGION_USED LR1110_LORAWAN_REGION_EU868
+
+/*!
+ * @brief LoRaWAN regulatory region country. define LoRaWAN subregion countries to activate or not the LBT, 0 means disable, 1 means enable
+ */
+#define LORAWAN_COUNTRY_JAPAN 0
+
+/*!
+ * @brief LoRaWAN class.
+ * One of:
+ *  LR1110_LORAWAN_CLASS_A
+ *  LR1110_LORAWAN_CLASS_C
+ */
+#define LORAWAN_CLASS_USED LR1110_LORAWAN_CLASS_A
+
+/*!
+ * @brief LoRaWAN ETSI duty cycle control enable/disable
+ * Supported values:
+ *  LR1110_MODEM_DUTY_CYCLE_ENABLE
+ *  LR1110_MODEM_DUTY_CYCLE_DISABLE
+ *
+ * @remark Please note that ETSI mandates duty cycled transmissions. Set to false only for test purposes
+ */
+#define LORAWAN_DUTYCYCLE_ON LR1110_MODEM_DUTY_CYCLE_ENABLE
+
+/*!
+ * @brief Datarate when device is static and mobile
+ * Supported values:
+ *  LR1110_MODEM_ADR_PROFILE_NETWORK_SERVER_CONTROLLED
+ *  LR1110_MODEM_ADR_PROFILE_MOBILE_LONG_RANGE
+ *  LR1110_MODEM_ADR_PROFILE_MOBILE_LOW_POWER
+ *  LR1110_MODEM_ADR_PROFILE_CUSTOM
+ */
+#define LORAWAN_STATIC_DATARATE LR1110_MODEM_ADR_PROFILE_NETWORK_SERVER_CONTROLLED
+#define LORAWAN_MOBILE_DATARATE LR1110_MODEM_ADR_PROFILE_MOBILE_LOW_POWER
+
 /*
  * -----------------------------------------------------------------------------
  * --- PUBLIC TYPES ------------------------------------------------------------
+ */
+
+/*!
+ * @}
  */
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif  // __MAIN_TRACKER_H__
+#endif  // MAIN_TRACKER_H
 
 /* --- EOF ------------------------------------------------------------------ */

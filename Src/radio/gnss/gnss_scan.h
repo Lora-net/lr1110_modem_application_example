@@ -29,8 +29,8 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef __GNSS_SCAN_H__
-#define __GNSS_SCAN_H__
+#ifndef GNSS_SCAN_H
+#define GNSS_SCAN_H
 
 #ifdef __cplusplus
 extern "C" {
@@ -77,26 +77,6 @@ extern "C" {
 typedef uint8_t gnss_scan_result_t;
 
 /*!
- * @brief GNSS state used in the state machine
- */
-typedef enum
-{
-    GNSS_START_SCAN,
-    GNSS_GET_RESULTS,
-    GNSS_TERMINATED,
-    GNSS_LOW_POWER,
-} gnss_state_t;
-
-/*!
- * @brief GNSS Antenna type
- */
-typedef enum
-{
-    GNSS_PATCH_ANTENNA = 1,
-    GNSS_PCB_ANTENNA,
-} antenna_t;
-
-/*!
  * @brief GNSS general settings
  */
 typedef struct
@@ -117,7 +97,6 @@ typedef struct
 {
     bool                                   is_valid_nav_message;
     uint16_t                               nav_message_size;
-    antenna_t                              antenna;
     uint8_t                                nav_message[GNSS_BUFFER_MAX_SIZE];
     uint8_t                                nb_detected_satellites;
     lr1110_modem_gnss_detected_satellite_t detected_satellites[32];
@@ -161,6 +140,6 @@ gnss_scan_result_t gnss_scan_execute( const void* context, const gnss_settings_t
 }
 #endif
 
-#endif  // __GNSS_SCAN_H__
+#endif  // GNSS_SCAN_H
 
 /* --- EOF ------------------------------------------------------------------ */

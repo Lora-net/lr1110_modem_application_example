@@ -1,7 +1,7 @@
 /*!
- * @file      main_test_wifi.c
+ * @file      main_read_internal_log.c
  *
- * @brief     Wi-Fi test implementation
+ * @brief     read Internal Log implementation
  *
  * Revised BSD License
  * Copyright Semtech Corporation 2020. All rights reserved.
@@ -34,8 +34,9 @@
  * --- DEPENDENCIES ------------------------------------------------------------
  */
 
-#include "wifi_scan.h"
 #include "lr1110_modem_board.h"
+#include "main_tracker.h"
+#include "tracker_utility.h"
 
 /*
  * -----------------------------------------------------------------------------
@@ -58,6 +59,11 @@
  */
 
 /*!
+ * @brief Tracker context structure
+ */
+extern tracker_ctx_t tracker_ctx;
+
+/*!
  * @brief Radio hardware and global parameters
  */
 extern lr1110_t lr1110;
@@ -66,13 +72,6 @@ extern lr1110_t lr1110;
  * -----------------------------------------------------------------------------
  * --- PRIVATE FUNCTIONS DECLARATION -------------------------------------------
  */
-
-/*!
- * @brief Reset event callback
- *
- * @param [in] reset_count reset counter from the modem
- */
-static void lr1110_modem_reset_event( uint16_t reset_count );
 
 /*
  * -----------------------------------------------------------------------------
@@ -84,75 +83,33 @@ static void lr1110_modem_reset_event( uint16_t reset_count );
  */
 int main( void )
 {
-    lr1110_modem_event_t           lr1110_modem_event = { };
-    lr1110_modem_version_t         modem;
-    wifi_settings_t                wifi_settings;
-    static wifi_scan_all_results_t capture_result;
-
     /* Init board */
     hal_mcu_init( );
     hal_mcu_init_periph( );
 
-    /* Board is initialized */
-    leds_blink( LED_ALL_MASK, 100, 2, true );
+    /* LR1110 modem-e version */
+    lr1110_modem_get_version( &lr1110, &tracker_ctx.modem_version );
 
-    /* Init LR1110 modem event */
-    lr1110_modem_event.wifi_scan_done = lr1110_modem_wifi_scan_done;
-    lr1110_modem_event.reset          = lr1110_modem_reset_event;
-    lr1110_modem_board_init( &lr1110, &lr1110_modem_event );
+    tracker_restore_app_ctx( );
+    tracker_restore_internal_log_ctx( );
 
-    HAL_DBG_TRACE_MSG( "\r\n\r\n" );
-    HAL_DBG_TRACE_INFO( "###### ===== LR1110 Modem Wi-Fi demo application ==== ######\r\n\r\n" );
+    HAL_DBG_TRACE_MSG( "Scan : \r\n\r\n" );
+    leds_on( LED_TX_MASK );
 
-    /* LR1110 modem version */
-    lr1110_modem_get_version( &lr1110, &modem );
-    HAL_DBG_TRACE_PRINTF( "LORAWAN     : %#04X\r\n", modem.lorawan );
-    HAL_DBG_TRACE_PRINTF( "FIRMWARE    : %#02X\r\n", modem.firmware );
-    HAL_DBG_TRACE_PRINTF( "BOOTLOADER  : %#02X\r\n\r\n", modem.bootloader );
+    /* Send over UART scan results */
+    tracker_restore_internal_log( );
 
-    /* Wi-Fi Parameters */
-    wifi_settings.enabled       = true;
-    wifi_settings.channels      = 0x3FFF;  // by default enable all channels
-    wifi_settings.types         = LR1110_MODEM_WIFI_TYPE_SCAN_B;
-    wifi_settings.scan_mode     = LR1110_MODEM_WIFI_SCAN_MODE_BEACON_AND_PKT;
-    wifi_settings.nbr_retrials  = WIFI_NBR_RETRIALS_DEFAULT;
-    wifi_settings.max_results   = WIFI_MAX_RESULTS_DEFAULT;
-    wifi_settings.timeout       = WIFI_TIMEOUT_IN_MS_DEFAULT;
-    wifi_settings.result_format = LR1110_MODEM_WIFI_RESULT_FORMAT_BASIC_MAC_TYPE_CHANNEL;
+    leds_off( LED_TX_MASK );
+
+    HAL_Delay( 1000 );
 
     while( 1 )
     {
-        HAL_DBG_TRACE_INFO( "###### ===== Wi-FI SCAN ==== ######\r\n\r\n" );
-
-        if( wifi_execute_scan( &lr1110, &wifi_settings, &capture_result ) == WIFI_SCAN_SUCCESS )
-        {
-            lr1110_modem_display_wifi_scan_results( &capture_result );
-        }
-        else
-        {
-            HAL_DBG_TRACE_MSG( "Wi-Fi Scan error\n\r" );
-        }
-
+        leds_on( LED_RX_MASK );
+        HAL_Delay( 1000 );
+        leds_off( LED_RX_MASK );
         HAL_Delay( 1000 );
     }
 }
 
-/*
- * -----------------------------------------------------------------------------
- * --- PRIVATE FUNCTIONS DEFINITION --------------------------------------------
- */
-
-static void lr1110_modem_reset_event( uint16_t reset_count )
-{
-    HAL_DBG_TRACE_INFO( "###### ===== LR1110 MODEM RESET %lu ==== ######\r\n\r\n", reset_count );
-
-    if( lr1110_modem_board_is_ready( ) == true )
-    {
-        /* System reset */
-        hal_mcu_reset( );
-    }
-    else
-    {
-        lr1110_modem_board_set_ready( true );
-    }
-}
+/* --- EOF ------------------------------------------------------------------ */

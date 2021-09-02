@@ -30,7 +30,7 @@
  */
 #include <stdlib.h>
 #include <stdio.h>
-#include "utilities.h"
+#include "smtc_utilities.h"
 
 /*!
  * Redefinition of rand() and srand() standard C functions.

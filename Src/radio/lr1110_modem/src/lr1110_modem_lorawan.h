@@ -205,7 +205,6 @@ typedef enum
     LR1110_MODEM_DM_INFO_TYPE_UPLOAD                                  = 0x0E,
     LR1110_MODEM_DM_INFO_TYPE_RESET_COUNT                             = 0x0F,
     LR1110_MODEM_DM_INFO_TYPE_DEV_EUI                                 = 0x10,
-    LR1110_MODEM_DM_INFO_TYPE_OWNER_COUNTER                           = 0x11,
     LR1110_MODEM_DM_INFO_TYPE_SESSION_ID                              = 0x12,
     LR1110_MODEM_DM_INFO_TYPE_CHIP_EUI                                = 0x13,
     LR1110_MODEM_DM_INFO_TYPE_STREAM                                  = 0x14,
@@ -334,6 +333,15 @@ typedef enum
 } lr1110_modem_down_data_flag_t;
 
 /*!
+ * @brief Upload status values
+ */
+typedef enum
+{
+    LR1110_MODEM_UPLOAD_ERROR   = 0x00,
+    LR1110_MODEM_UPLOAD_SUCCESS = 0x01,
+} lr1110_modem_upload_event_t;
+
+/*!
  * @brief Modem charge type
  */
 typedef enum
@@ -395,6 +403,16 @@ typedef enum
     LR1110_MODEM_RESUMED = 0x00,
     LR1110_MODEM_SUSPEND = 0x01,
 } lr1110_modem_suspend_t;
+
+/**
+ * @brief Modem set conf type
+ */
+typedef enum
+{
+    LR1110_MODEM_EVENT_SETCONF_ADR_MODE_UPDATED    = LR1110_MODEM_DM_INFO_TYPE_ADR_MODE,
+    LR1110_MODEM_EVENT_SETCONF_JOIN_EUI_UPDATED    = LR1110_MODEM_DM_INFO_TYPE_JOIN_EUI,
+    LR1110_MODEM_EVENT_SETCONF_DM_INTERVAL_UPDATED = LR1110_MODEM_DM_INFO_TYPE_INTERVAL,
+} lr1110_modem_event_setconf_tag_t;
 
 /*!
  * @brief Ramping time for PA
@@ -1609,6 +1627,27 @@ lr1110_modem_response_code_t lr1110_modem_set_stream_redundancy_rate( const void
  */
 lr1110_modem_response_code_t lr1110_modem_get_stream_redundancy_rate( const void* context,
                                                                       uint8_t*    stream_redundancy_rate );
+
+/*!
+ * @brief Set the Crystal error of the MCU to fine adjust the rx window for lorawan ( ex: set 30 for a crystal error =
+ * 0.3% ).
+ *
+ * @param [in] context Chip implementation context
+ * @param [out] crystal_error Crystal error
+ *
+ * @returns Operation status
+ */
+lr1110_modem_response_code_t lr1110_modem_set_crystal_error( const void* context, const uint32_t crystal_error );
+
+/*!
+ * @brief Get the Crystal error.
+ *
+ * @param [in] context Chip implementation context
+ * @param [out] crystal_error Crystal error
+ *
+ * @returns Operation status
+ */
+lr1110_modem_response_code_t lr1110_modem_get_crystal_error( const void* context, uint32_t* crystal_error );
 
 #ifdef __cplusplus
 }

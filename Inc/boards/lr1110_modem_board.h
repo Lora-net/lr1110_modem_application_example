@@ -1,7 +1,7 @@
 /*!
  * @file      lr1110_modem_board.h
  *
- * @brief     Target board LR1110 driver definition
+ * @brief     Target LR1110 EVK Modem board driver definition
  *
  * Revised BSD License
  * Copyright Semtech Corporation 2020. All rights reserved.
@@ -29,8 +29,8 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef __LR1110_MODEM_BOARD_H__
-#define __LR1110_MODEM_BOARD_H__
+#ifndef LR1110_MODEM_BOARD_H
+#define LR1110_MODEM_BOARD_H
 
 #ifdef __cplusplus
 extern "C" {
@@ -114,11 +114,11 @@ uint32_t lr1110_modem_board_get_tcxo_wakeup_time( void );
  * @brief Initializes the radio driver
  *
  * @param [in] context Radio abstraction
- * @param [in] event Pointeur to the event callbacks
+ * @param [in] event Pointeur to the event callbacks \see lr1110_modem_event_callback_t
  *
  * @returns Status of the init
  */
-lr1110_modem_response_code_t lr1110_modem_board_init( const void* context, lr1110_modem_event_t* event );
+lr1110_modem_response_code_t lr1110_modem_board_init( const void* context, lr1110_modem_event_callback_t* event );
 
 /*!
  * @brief Flush the modem event queue
@@ -161,9 +161,11 @@ uint32_t lr1110_modem_board_get_systime_from_gps( const void* context );
  * @param [in] context Radio abstraction
  * @param [out] oldest_almanac_date oldest sv date
  * @param [out] newest_almanac_date newest sv date
+ *
+ * @returns Modem-E response code
  */
-void lr1110_modem_get_almanac_dates( const void* context, uint32_t* oldest_almanac_date,
-                                     uint32_t* newest_almanac_date );
+lr1110_modem_response_code_t lr1110_modem_get_almanac_dates( const void* context, uint32_t* oldest_almanac_date,
+                                                             uint32_t* newest_almanac_date );
 
 /*!
  * @brief notify the user is the modem is ready
@@ -191,10 +193,27 @@ void lr1110_modem_board_set_ready( bool ready );
 lr1110_modem_response_code_t lr1110_modem_board_measure_battery_drop( const void* context, int32_t* drop,
                                                                       uint32_t* time_recovery );
 
+/*!
+ * @brief Turn on/off the requested LED(s)
+ *
+ * @param [in] led_mask Mask representing the list of the LEDs to turn on/off
+ * @param [in] turn_on If true, the requested LEDs are turned on, else they are turned off
+ */
+void lr1110_modem_board_led_set( uint32_t led_mask, bool turn_on );
+
+/*!
+ * @brief Turn on/off the requested LED(s) for a given duration
+ *
+ * @param [in] led_mask Mask representing the list of the LEDs to turn on/off
+ * @param [in] turn_on If true, the requested LEDs are turned on, else they are turned off
+ * @param [in] duration_ms Duration of the pulse, in milliseconds
+ */
+void lr1110_modem_board_led_pulse( uint32_t led_mask, bool turn_on, uint32_t duration_ms );
+
 #ifdef __cplusplus
 }
 #endif
 
-#endif  // __LR1110_MODEM_BOARD_H__
+#endif  // LR1110_MODEM_BOARD_H
 
 /* --- EOF ------------------------------------------------------------------ */

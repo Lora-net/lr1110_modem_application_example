@@ -29,8 +29,8 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef __SMTC_HAL_GPIO_PIN_NAMES_H__
-#define __SMTC_HAL_GPIO_PIN_NAMES_H__
+#ifndef SMTC_HAL_GPIO_PIN_NAMES_H
+#define SMTC_HAL_GPIO_PIN_NAMES_H
 
 #ifdef __cplusplus
 extern "C" {
@@ -174,4 +174,4 @@ typedef enum hal_gpio_pin_names_e
 }
 #endif
 
-#endif  // __SMTC_HAL_GPIO_PIN_NAMES_H__
+#endif  // SMTC_HAL_GPIO_PIN_NAMES_H

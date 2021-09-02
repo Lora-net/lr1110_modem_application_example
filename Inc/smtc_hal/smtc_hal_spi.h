@@ -28,8 +28,8 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-#ifndef __SMTC_HAL_SPI_H__
-#define __SMTC_HAL_SPI_H__
+#ifndef SMTC_HAL_SPI_H
+#define SMTC_HAL_SPI_H
 
 #ifdef __cplusplus
 extern "C" {
@@ -111,4 +111,4 @@ uint16_t hal_spi_in_out( const uint32_t id, const uint16_t out_data );
 }
 #endif
 
-#endif  // __SMTC_HAL_SPI_H__
+#endif  // SMTC_HAL_SPI_H

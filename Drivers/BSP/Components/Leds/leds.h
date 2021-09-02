@@ -29,8 +29,8 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef __LEDS_H__
-#define __LEDS_H__
+#ifndef LEDS_H
+#define LEDS_H
 
 #ifdef __cplusplus
 extern "C" {
@@ -54,25 +54,33 @@ extern "C" {
  * --- PUBLIC CONSTANTS --------------------------------------------------------
  */
 
+typedef enum
+{
+    LR1110_EVK_LED_TX,
+    LR1110_EVK_LED_RX,
+    LR1110_EVK_LED_SCAN,
+    LR1110_EVK_LED_COUNT
+} lr1110_evk_led_t;
+
 /*!
  * @brief LED TX MASK
  */
-#define LED_TX_MASK 0x01
+#define LED_TX_MASK ( 1 << LR1110_EVK_LED_TX )
 
 /*!
  * @brief LED RX MASK
  */
-#define LED_RX_MASK 0x02
+#define LED_RX_MASK ( 1 << LR1110_EVK_LED_RX )
 
 /*!
  * @brief LED SCAN MASK
  */
-#define LED_SCAN_MASK 0x04
+#define LED_SCAN_MASK ( 1 << LR1110_EVK_LED_SCAN )
 
 /*!
  * @brief LED ALL MASK
  */
-#define LED_ALL_MASK 0x07
+#define LED_ALL_MASK ( LED_TX_MASK | LED_RX_MASK | LED_SCAN_MASK )
 
 /*
  * -----------------------------------------------------------------------------
@@ -128,4 +136,4 @@ void leds_blink( uint8_t leds, uint32_t delay, uint8_t nb_blink, bool reset_leds
 }
 #endif
 
-#endif //__LEDS_H__
+#endif  // LEDS_H

@@ -29,8 +29,8 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef __WIFI_SCAN_H__
-#define __WIFI_SCAN_H__
+#ifndef WIFI_SCAN_H
+#define WIFI_SCAN_H
 
 #ifdef __cplusplus
 extern "C" {
@@ -55,7 +55,7 @@ extern "C" {
  */
 
 #define WIFI_NBR_RETRIALS_DEFAULT 5
-#define WIFI_MAX_RESULTS_DEFAULT 6
+#define WIFI_MAX_RESULTS_DEFAULT 5
 #define WIFI_TIMEOUT_IN_MS_DEFAULT 90
 #define WIFI_MAX_BASIC_RESULTS_PER_SCAN 32
 #define WIFI_MAX_EXTENDED_RESULTS_PER_SCAN 12
@@ -185,6 +185,6 @@ wifi_scan_result_t wifi_execute_scan( const void* context, const wifi_settings_t
 }
 #endif
 
-#endif  // __WIFI_SCAN_H__
+#endif  // WIFI_SCAN_H
 
 /* --- EOF ------------------------------------------------------------------ */
